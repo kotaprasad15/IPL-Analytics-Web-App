@@ -37,6 +37,8 @@ const elements = {
   fanBetsBalance: document.getElementById("fanBetsBalance"),
   fanBetsLeaderboard: document.getElementById("fanBetsLeaderboard"),
   fanBetsScoreboard: document.getElementById("fanBetsScoreboard"),
+  analysisScoreboard: document.getElementById("analysisScoreboard"),
+  oddsScoreboard: document.getElementById("oddsScoreboard"),
   fanBetsMarkets: document.getElementById("fanBetsMarkets"),
   fanBetsActive: document.getElementById("fanBetsActive"),
   fanBetsResults: document.getElementById("fanBetsResults"),
@@ -172,6 +174,18 @@ function setupNavigation() {
   const navBtns = document.querySelectorAll('.nav-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
+  const savedTab = localStorage.getItem('ipl-active-tab');
+  if (savedTab) {
+    const targetBtn = document.querySelector(`.nav-btn[data-tab="${savedTab}"]`);
+    const targetPane = document.getElementById(savedTab);
+    if (targetBtn && targetPane) {
+      navBtns.forEach(b => b.classList.remove('active'));
+      tabPanes.forEach(p => p.classList.remove('active'));
+      targetBtn.classList.add('active');
+      targetPane.classList.add('active');
+    }
+  }
+
   navBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       navBtns.forEach(b => b.classList.remove('active'));
@@ -180,6 +194,8 @@ function setupNavigation() {
       btn.classList.add('active');
       const targetId = btn.getAttribute('data-tab');
       document.getElementById(targetId).classList.add('active');
+      
+      localStorage.setItem('ipl-active-tab', targetId);
     });
   });
 }
@@ -1341,43 +1357,74 @@ function renderFanBetsLeaderboard() {
 }
 
 function renderFanBetsScoreboard(experience) {
-  const featured = experience.featuredMatch;
-  if (!featured) {
-    elements.fanBetsScoreboard.innerHTML = `
-      <p class="section-kicker">Live Board</p>
-      <h2>Waiting for the official feed</h2>
-      <p class="narrative">Fan Bets wakes up as soon as live or upcoming IPL fixtures arrive in the current season feed.</p>
-    `;
-    return;
-  }
+  const liveMatches = experience.scoreboardMatches.filter(match => match.status === "Live");
+  const featured = liveMatches[0];
+  const targets = [
+    elements.fanBetsScoreboard,
+    elements.analysisScoreboard,
+    elements.oddsScoreboard
+  ].filter(Boolean);
 
-  elements.fanBetsScoreboard.innerHTML = `
+  if (!targets.length) return;
+
+  let html = "";
+  if (!featured) {
+    html = `
+      <p class="section-kicker">Live Board</p>
+      <h2>No live match in progress</h2>
+      <p class="narrative">The live scoreboard will automatically appear here when the next IPL match begins.</p>
+    `;
+  } else {
+    html = `
     <div class="fan-bets-scoreboard-main">
       <div>
         <p class="section-kicker">Live Board</p>
         <h2>${escapeHtml(featured.matchName)}</h2>
-        <p class="narrative">${escapeHtml(buildFanBetScoreline(featured))}</p>
+        <p class="narrative" style="margin-bottom:0.5rem;">${escapeHtml(buildFanBetScoreline(featured))}</p>
+        ${featured.status === "Live" && featured.strikerName ? `
+          <div style="display:flex; gap:16px; font-size:0.875rem; align-items:center; background:var(--surface-sunken); padding:8px 12px; border-radius:6px;">
+            <div style="color:var(--accent-blue);">🏏 <strong>${escapeHtml(featured.strikerName)}*</strong> ${featured.strikerRuns}(${featured.strikerBalls})</div>
+            <div style="color:var(--text-soft);">🏏 ${escapeHtml(featured.nonStrikerName)} ${featured.nonStrikerRuns}(${featured.nonStrikerBalls})</div>
+            <div style="color:var(--accent-coral);">⚾ <strong>${escapeHtml(featured.bowlerName)}*</strong> ${featured.bowlerWickets}/${featured.bowlerRuns} (${featured.bowlerOvers})</div>
+          </div>
+        ` : ''}
       </div>
       <div class="fan-score-pill-group">
-        <span class="fan-bet-chip">${escapeHtml(featured.status === "UpComing" ? "Upcoming" : featured.status === "Post" ? "Completed" : "Live")}</span>
-        <span class="fan-bet-chip fan-bet-chip-soft">${escapeHtml(featured.status === "UpComing" ? formatDateTime(featured.startTime) : featured.comments || featured.venue || "Official feed")}</span>
+        <span class="fan-bet-chip">Live</span>
+        <span class="fan-bet-chip fan-bet-chip-soft">${escapeHtml(featured.comments || featured.venue || "Official feed")}</span>
       </div>
     </div>
-    <div class="fan-bets-mini-board">
-      ${experience.scoreboardMatches
-        .slice(0, 3)
-        .map(
-          (match) => `
-            <article class="fan-mini-match">
-              <strong>${escapeHtml(match.teamACode || initials(match.teamA))} vs ${escapeHtml(match.teamBCode || initials(match.teamB))}</strong>
-              <p>${escapeHtml(buildFanBetScoreline(match))}</p>
-              <small>${escapeHtml(match.status === "UpComing" ? formatDateTime(match.startTime) : match.comments || match.venue || "")}</small>
-            </article>
-          `
-        )
-        .join("")}
-    </div>
-  `;
+    `;
+
+    if (liveMatches.length > 1) {
+      html += `
+        <div class="fan-bets-mini-board">
+          ${liveMatches
+            .slice(1)
+            .map(
+              (match) => `
+                <article class="fan-mini-match">
+                  <strong>${escapeHtml(match.teamACode || initials(match.teamA))} vs ${escapeHtml(match.teamBCode || initials(match.teamB))}</strong>
+                  <p>${escapeHtml(buildFanBetScoreline(match))}</p>
+                  ${match.status === "Live" && match.strikerName ? `
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-soft); margin-top:4px;">
+                      <span>🏏 ${escapeHtml(match.strikerName)} ${match.strikerRuns}</span>
+                      <span>⚾ ${escapeHtml(match.bowlerName)} ${match.bowlerWickets}/${match.bowlerRuns}</span>
+                    </div>
+                  ` : ''}
+                  <small>${escapeHtml(match.comments || match.venue || "")}</small>
+                </article>
+              `
+            )
+            .join("")}
+        </div>
+      `;
+    }
+  }
+
+  targets.forEach(target => {
+    target.innerHTML = html;
+  });
 }
 
 function renderFanBetsMarkets(experience) {

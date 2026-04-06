@@ -149,7 +149,7 @@
 
       <!-- ====================== ANALYSIS TAB ====================== -->
       <div id="tab-analysis" class="tab-pane">
-        <section class="controls card">
+        <section class="controls card" style="margin-bottom: 24px;">
           <div>
             <label for="seasonSelect">Season view</label>
             <select id="seasonSelect"></select>
@@ -162,6 +162,8 @@
             Loading CSV data and building team/player metrics...
           </div>
         </section>
+
+        <section class="card fan-bets-scoreboard" id="analysisScoreboard" style="margin-bottom: 24px;"></section>
 
         <section class="layout">
           <div class="main-column">
@@ -258,6 +260,8 @@
             <select id="oddsTeamSelect"></select>
           </div>
         </section>
+
+        <section class="card fan-bets-scoreboard" id="oddsScoreboard" style="margin-bottom: 24px;"></section>
         <section class="layout">
           <div class="main-column">
              <section class="card" id="liveMatchPanel"></section>

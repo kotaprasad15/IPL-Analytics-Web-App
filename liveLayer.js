@@ -1,5 +1,5 @@
 (function () {
-  const LIVE_REFRESH_MS = 120000;
+  const LIVE_REFRESH_MS = 10000;
   const LIVE_COMPETITION_FEED =
     "https://ipl-stats-sports-mechanic.s3.ap-south-1.amazonaws.com/ipl/mc/competition.js";
 
@@ -854,6 +854,16 @@
           secondSummary: row.SecondBattingSummary || row["2Summary"] || "",
           currentInnings: numberValue(row.CurrentInnings),
           projectedScore: numberValue(row.ProjectedScore),
+          strikerName: row.CurrentStrikerName || "",
+          strikerRuns: row.StrikerRuns || 0,
+          strikerBalls: row.StrikerBalls || 0,
+          nonStrikerName: row.CurrentNonStrikerName || "",
+          nonStrikerRuns: row.NonStrikerRuns || 0,
+          nonStrikerBalls: row.NonStrikerBalls || 0,
+          bowlerName: row.CurrentBowlerName || "",
+          bowlerOvers: row.BowlerOvers || "0.0",
+          bowlerRuns: row.BowlerRuns || 0,
+          bowlerWickets: row.BowlerWickets || 0,
         };
       })
       .filter(function (match) {
