@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=latest3">
+  <link rel="stylesheet" href="styles.css?v=latest5">
 </head>
 <body>
   <div class="analytics-bg" aria-hidden="true">
@@ -83,10 +83,12 @@
         <button class="nav-btn active" data-tab="tab-home">Home</button>
         <button class="nav-btn" data-tab="tab-analysis">Analysis</button>
         <button class="nav-btn" data-tab="tab-odds">Odds</button>
+        <button class="nav-btn" data-tab="tab-fan-bets">Fan Bets</button>
       </div>
       <div class="nav-right">
-        <button class="nav-text-btn">Sign in</button>
-        <button class="nav-register-btn">Register</button>
+        <div class="auth-identity" id="authIdentity" aria-live="polite"></div>
+        <button class="nav-text-btn" id="authSignInButton" type="button">Sign in</button>
+        <button class="nav-register-btn" id="authRegisterButton" type="button">Register</button>
       </div>
     </nav>
 
@@ -267,6 +269,47 @@
         </section>
       </div>
 
+      <!-- ====================== FAN BETS TAB ====================== -->
+      <div id="tab-fan-bets" class="tab-pane">
+        <section class="fan-bets-top">
+          <article class="card fan-bets-balance" id="fanBetsBalance"></article>
+          <article class="card fan-bets-leaderboard-card" id="fanBetsLeaderboard"></article>
+        </section>
+
+        <section class="card fan-bets-scoreboard" id="fanBetsScoreboard"></section>
+
+        <section class="fan-bets-layout">
+          <div class="fan-bets-main">
+            <section class="card fan-bets-market-card">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">Virtual Bets</p>
+                  <h2>Fun markets for live IPL moments</h2>
+                </div>
+                <p class="section-note">
+                  No real money involved. Every slip uses your virtual fan points and settles automatically from the live feed.
+                </p>
+              </div>
+              <div class="bet-card-grid" id="fanBetsMarkets"></div>
+            </section>
+          </div>
+
+          <aside class="fan-bets-side">
+            <section class="card fan-bets-active-card">
+              <p class="section-kicker">Active Slips</p>
+              <h2>Your live bets</h2>
+              <div id="fanBetsActive"></div>
+            </section>
+
+            <section class="card fan-bets-results-card">
+              <p class="section-kicker">Settled Results</p>
+              <h2>Recent win/loss updates</h2>
+              <div id="fanBetsResults"></div>
+            </section>
+          </aside>
+        </section>
+      </div>
+
     </main>
   </div>
 
@@ -277,7 +320,64 @@
     </div>
   </template>
 
-  <script src="liveLayer.js?v=latest3"></script>
-  <script src="app.js?v=latest3"></script>
+  <div class="auth-modal-shell" id="authModal" hidden>
+    <div class="auth-modal-backdrop" data-auth-close="true"></div>
+    <section class="auth-modal-card card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <button class="auth-close-btn" id="authCloseButton" type="button" aria-label="Close account dialog">&times;</button>
+      <p class="section-kicker" id="authModalEyebrow">Fan Bets Account</p>
+      <h2 id="authModalTitle">Sign in to your wallet</h2>
+      <p class="narrative auth-modal-copy" id="authModalCopy">
+        Register to unlock 1,000 fan points, save every slip to Supabase, and pick up where you left off on any device.
+      </p>
+
+      <form class="auth-form" id="authForm">
+        <div class="auth-field" id="authDisplayNameField">
+          <label for="authDisplayName">Display name</label>
+          <input id="authDisplayName" name="displayName" type="text" maxlength="40" autocomplete="nickname" placeholder="Powerplay Pro" />
+        </div>
+
+        <div class="auth-field">
+          <label for="authEmail">Email</label>
+          <input id="authEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+        </div>
+
+        <div class="auth-field">
+          <label for="authPassword">Password</label>
+          <input id="authPassword" name="password" type="password" minlength="8" autocomplete="current-password" placeholder="At least 8 characters" required />
+        </div>
+
+        <button class="auth-submit-btn" id="authSubmitButton" type="submit">Sign in</button>
+      </form>
+
+      <p class="auth-feedback" id="authFeedback" aria-live="polite"></p>
+
+      <button class="auth-switch-btn" id="authSwitchButton" type="button">
+        New here? Create an account
+      </button>
+    </section>
+  </div>
+
+  <!-- Supabase CDN & Initialization -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabaseUrl = 'https://krmotrcelcckwbsibwfk.supabase.co';
+    const supabaseAnonKey = 'sb_publishable_hCeQ97grlZWO7hrR7VnM0g_OoU7Cztf';
+    
+    // Create the Supabase client and attach it to the window object so Vanilla JS files can use it!
+    window.supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+    // Quick connection test!
+    window.supabaseClient.from('matches').select('*').limit(1).then(({ data, error }) => {
+      if (error) {
+        console.error('Supabase Error:', error.message);
+      } else {
+        console.log('✅ Supabase connected successfully from the browser!', data);
+      }
+    });
+  </script>
+
+  <script src="supabaseClient.js?v=auth1"></script>
+  <script src="liveLayer.js?v=latest5"></script>
+  <script src="app.js?v=latest5"></script>
 </body>
 </html>
