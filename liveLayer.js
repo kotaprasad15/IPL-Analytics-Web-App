@@ -543,10 +543,7 @@
       })[0];
     const upcomingMatches = live.matches
       .filter(function (match) {
-        return (
-          match.status === "UpComing" &&
-          (match.teamA === team.team || match.teamB === team.team)
-        );
+        return match.status === "UpComing";
       })
       .sort(function (a, b) {
         return a.startTime - b.startTime;
@@ -565,12 +562,10 @@
           renderMatchCard(recentMatch)
         : "") +
       (upcomingMatches.length
-        ? '<p class="section-kicker subtle-kicker">Next ' +
-          escapeHtml(team.team) +
-          ' fixtures</p><div class="match-stack">' +
+        ? '<p class="section-kicker subtle-kicker">Next upcoming fixtures</p><div class="match-stack">' +
           upcomingMatches.map(renderMatchCard).join("") +
           "</div>"
-        : '<p class="narrative">No upcoming fixtures were found for this team.</p>');
+        : '<p class="narrative">No upcoming fixtures were found in the current feed.</p>');
   }
 
   function renderLivePlayerTable(players) {

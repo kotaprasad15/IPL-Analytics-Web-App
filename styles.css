@@ -116,11 +116,120 @@ code {
 .meta-pill strong {
   font-size: 1.02rem;
 }
+.main-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  padding: 12px 32px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.25rem;
+}
+
+.logo-icon {
+  background-color: var(--primary);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.nav-center {
+  display: flex;
+  gap: 28px;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #4b5563;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.2s;
+}
+
+.nav-btn:hover {
+  color: #111827;
+  background: transparent;
+}
+
+.nav-btn.active {
+  color: #111827;
+  font-weight: 700;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav-text-btn {
+  background: transparent;
+  border: none;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #4b5563;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.nav-text-btn:hover {
+  color: #111827;
+}
+
+.nav-register-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 24px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nav-register-btn:hover {
+  background: var(--ink);
+}
+
+
+.tab-pane {
+  display: none;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .dashboard {
-  margin-top: 24px;
-  display: grid;
-  gap: 20px;
+  display: block;
 }
 
 .card {
@@ -137,6 +246,7 @@ code {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   align-items: end;
+  margin-bottom: 24px;
 }
 
 label {

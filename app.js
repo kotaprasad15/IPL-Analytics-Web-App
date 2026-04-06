@@ -25,6 +25,7 @@ const elements = {
   playerTable: document.getElementById("playerTable"),
   playerSectionTitle: document.getElementById("playerSectionTitle"),
   loadingTemplate: document.getElementById("loadingTemplate"),
+  oddsTeamSelect: document.getElementById("oddsTeamSelect"),
 };
 
 bootstrap();
@@ -39,11 +40,16 @@ function bootstrap() {
         if (elements.teamSelect) {
           elements.teamSelect.value = team;
         }
+        if (elements.oddsTeamSelect) {
+          elements.oddsTeamSelect.value = team;
+        }
         render();
       },
       onRefresh: render,
     });
   }
+
+  setupNavigation();
 
   const worker = new Worker("analyticsWorker.js?v=" + Date.now());
   worker.onerror = (e) => {
@@ -82,9 +88,15 @@ function setupControls() {
   elements.seasonSelect.innerHTML = seasonOptions
     .map((option) => `<option value="${option.value}">${option.label}</option>`)
     .join("");
-  elements.teamSelect.innerHTML = state.data.teams
+  const teamOptions = state.data.teams
     .map((team) => `<option value="${escapeHtml(team)}">${escapeHtml(team)}</option>`)
     .join("");
+  
+  elements.teamSelect.innerHTML = teamOptions;
+  if (elements.oddsTeamSelect) {
+    elements.oddsTeamSelect.innerHTML = teamOptions;
+    elements.oddsTeamSelect.value = state.selectedTeam || state.data.teams[0];
+  }
 
   elements.seasonSelect.addEventListener("change", (event) => {
     state.selectedSeason = event.target.value;
@@ -93,7 +105,32 @@ function setupControls() {
 
   elements.teamSelect.addEventListener("change", (event) => {
     state.selectedTeam = event.target.value;
+    if (elements.oddsTeamSelect) elements.oddsTeamSelect.value = state.selectedTeam;
     render();
+  });
+
+  if (elements.oddsTeamSelect) {
+    elements.oddsTeamSelect.addEventListener("change", (event) => {
+      state.selectedTeam = event.target.value;
+      if (elements.teamSelect) elements.teamSelect.value = state.selectedTeam;
+      render();
+    });
+  }
+}
+
+function setupNavigation() {
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navBtns.forEach(b => b.classList.remove('active'));
+      tabPanes.forEach(p => p.classList.remove('active'));
+      
+      btn.classList.add('active');
+      const targetId = btn.getAttribute('data-tab');
+      document.getElementById(targetId).classList.add('active');
+    });
   });
 }
 

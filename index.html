@@ -11,163 +11,205 @@
 </head>
 <body>
   <div class="page-shell">
-    <header class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">IPL Analytics Web App</p>
-        <h1>Team performance, broken down by every player who actually took the field.</h1>
-        <p class="hero-text">
-          This app analyzes the last three IPL seasons in your local dataset
-          and now layers in the official live IPL feeds for the current season,
-          so you can compare historical performance, current player form, the
-          live table, and title odds in one place.
-        </p>
+    <nav class="main-nav">
+      <div class="nav-left">
+        <div class="logo-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M5.5 5.5A7.4 7.4 0 0 0 8 12a7.4 7.4 0 0 0-2.5 6.5"></path>
+            <path d="M18.5 5.5A7.4 7.4 0 0 1 16 12a7.4 7.4 0 0 1 2.5 6.5"></path>
+          </svg>
+        </div>
+        <span style="font-weight: 700; color: var(--primary); letter-spacing: -0.02em;">IPL Analytics</span>
       </div>
-      <div class="hero-meta">
-        <div class="meta-pill">
-          <span>Dataset window</span>
-          <strong>2023 to 2025</strong>
-        </div>
-        <div class="meta-pill">
-          <span>Online enrichment</span>
-          <strong>Official IPL live feeds + ESPN Cricinfo profile links</strong>
-        </div>
-        <div class="meta-pill">
-          <span>Live layer</span>
-          <strong>Current table, squad form, fixtures, and winner odds</strong>
-        </div>
+      <div class="nav-center">
+        <button class="nav-btn active" data-tab="tab-home">Home</button>
+        <button class="nav-btn" data-tab="tab-analysis">Analysis</button>
+        <button class="nav-btn" data-tab="tab-odds">Odds</button>
       </div>
-    </header>
+      <div class="nav-right">
+        <button class="nav-text-btn">Sign in</button>
+        <button class="nav-register-btn">Register</button>
+      </div>
+    </nav>
 
     <main class="dashboard">
-      <section class="controls card">
-        <div>
-          <label for="seasonSelect">Season view</label>
-          <select id="seasonSelect"></select>
-        </div>
-        <div>
-          <label for="teamSelect">Team focus</label>
-          <select id="teamSelect"></select>
-        </div>
-        <div class="control-note" id="dataStatus">
-          Loading CSV data and building team/player metrics...
-        </div>
-      </section>
 
-      <section class="card live-callout" id="liveStatusBanner"></section>
+      <!-- ====================== HOME TAB ====================== -->
+      <div id="tab-home" class="tab-pane active">
+        <header class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">IPL Analytics Web App</p>
+            <h1>Team performance, broken down by every player who actually took the field.</h1>
+            <p class="hero-text">
+              This app analyzes the last three IPL seasons in your local dataset
+              and now layers in the official live IPL feeds for the current season,
+              so you can compare historical performance, current player form, the
+              live table, and title odds in one place.
+            </p>
+          </div>
+          <div class="hero-meta">
+            <div class="meta-pill">
+              <span>Dataset window</span>
+              <strong>2023 to 2025</strong>
+            </div>
+            <div class="meta-pill">
+              <span>Online enrichment</span>
+              <strong>Official IPL live feeds + ESPN Cricinfo profile links</strong>
+            </div>
+            <div class="meta-pill">
+              <span>Live layer</span>
+              <strong>Current table, squad form, fixtures, and winner odds</strong>
+            </div>
+          </div>
+        </header>
 
-      <section class="summary-grid" id="liveSummaryGrid"></section>
+        <section class="card live-callout" id="liveStatusBanner" style="margin-top:24px;"></section>
 
-      <section class="layout live-layout">
-        <div class="main-column">
-          <section class="card">
-            <div class="section-head">
-              <div>
-                <p class="section-kicker">Live Table</p>
-                <h2>Current season standings and title odds</h2>
+        <section class="summary-grid" id="liveSummaryGrid" style="margin-top:24px;"></section>
+
+        <section class="results-band" id="resultsBand" style="margin-top:24px;"></section>
+
+        <section class="summary-grid" id="summaryGrid" style="margin-top:24px;"></section>
+
+        <section class="card source-panel" style="margin-top:24px;">
+          <p class="section-kicker">Sources</p>
+          <h2>Data inputs</h2>
+          <ul class="source-list">
+            <li>Local match summaries: <code>csv/Match_Info.csv</code></li>
+            <li>Local ball-by-ball feed: <code>csv/Ball_By_Ball_Match_Data.csv</code></li>
+            <li>Online player directory: <code>csv/2024_players_details.csv</code> image/profile links</li>
+            <li><a href="https://www.iplt20.com/points-table/men/2026" target="_blank" rel="noreferrer">Official IPL 2026 points table</a></li>
+            <li><a href="https://www.iplt20.com/stats/2026" target="_blank" rel="noreferrer">Official IPL 2026 stats page</a></li>
+            <li><a href="https://ipl-stats-sports-mechanic.s3.ap-south-1.amazonaws.com/ipl/mc/competition.js" target="_blank" rel="noreferrer">Official IPL competition feed</a></li>
+            <li><a href="https://www.iplt20.com/teams" target="_blank" rel="noreferrer">Official IPL teams directory</a></li>
+          </ul>
+          <p class="narrative">Open this app through a local web server so the browser can fetch the CSV files correctly.</p>
+        </section>
+      </div>
+
+      <!-- ====================== ANALYSIS TAB ====================== -->
+      <div id="tab-analysis" class="tab-pane">
+        <section class="controls card">
+          <div>
+            <label for="seasonSelect">Season view</label>
+            <select id="seasonSelect"></select>
+          </div>
+          <div>
+            <label for="teamSelect">Team focus</label>
+            <select id="teamSelect"></select>
+          </div>
+          <div class="control-note" id="dataStatus">
+            Loading CSV data and building team/player metrics...
+          </div>
+        </section>
+
+        <section class="layout">
+          <div class="main-column">
+            <!-- Live Analysis Components -->
+            <section class="card">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">Live Table</p>
+                  <h2>Current season standings and title odds</h2>
+                </div>
+                <p class="section-note">
+                  Standings, fixtures, batting leaders, bowling leaders, and squad
+                  data are pulled from the official IPL feeds and refreshed
+                  automatically.
+                </p>
               </div>
-              <p class="section-note">
-                Standings, fixtures, batting leaders, bowling leaders, and squad
-                data are pulled from the official IPL feeds and refreshed
-                automatically.
-              </p>
-            </div>
-            <div class="table-wrap">
-              <table class="data-table" id="liveTable">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="section-head">
-              <div>
-                <p class="section-kicker">Live Squad Form</p>
-                <h2 id="livePlayerSectionTitle">Current team player stats</h2>
+              <div class="table-wrap">
+                <table class="data-table" id="liveTable">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
               </div>
-              <p class="section-note">
-                These are online current-season stats for the selected team,
-                merged from the official IPL squad, batting, and bowling feeds.
-              </p>
-            </div>
-            <div class="table-wrap">
-              <table class="data-table player-table" id="livePlayerTable">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-        </div>
+            </section>
 
-        <aside class="side-column">
-          <section class="card spotlight" id="liveSpotlight"></section>
-          <section class="card" id="liveOddsPanel"></section>
-          <section class="card" id="liveMatchPanel"></section>
-        </aside>
-      </section>
-
-      <section class="results-band" id="resultsBand"></section>
-
-      <section class="summary-grid" id="summaryGrid"></section>
-
-      <section class="layout">
-        <div class="main-column">
-          <section class="card">
-            <div class="section-head">
-              <div>
-                <p class="section-kicker">League Table</p>
-                <h2>Team comparison</h2>
+            <section class="card">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">Live Squad Form</p>
+                  <h2 id="livePlayerSectionTitle">Current team player stats</h2>
+                </div>
+                <p class="section-note">
+                  These are online current-season stats for the selected team,
+                  merged from the official IPL squad, batting, and bowling feeds.
+                </p>
               </div>
-              <p class="section-note">
-                Rankings are based on actual results in the selected seasons, with run rates and player contribution metrics derived from the ball-by-ball data.
-              </p>
-            </div>
-            <div class="table-wrap">
-              <table class="data-table" id="teamTable">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="section-head">
-              <div>
-                <p class="section-kicker">Player Lens</p>
-                <h2 id="playerSectionTitle">Squad contribution</h2>
+              <div class="table-wrap">
+                <table class="data-table player-table" id="livePlayerTable">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
               </div>
-              <p class="section-note">
-                Batting and bowling stats reflect only the selected seasons in your local data. Online links open current player profiles when available.
-              </p>
-            </div>
-            <div class="table-wrap">
-              <table class="data-table player-table" id="playerTable">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-        </div>
+            </section>
 
-        <aside class="side-column">
-          <section class="card spotlight" id="teamSpotlight"></section>
-          <section class="card insight-panel" id="insightPanel"></section>
-          <section class="card source-panel">
-            <p class="section-kicker">Sources</p>
-            <h2>Data inputs</h2>
-            <ul class="source-list">
-              <li>Local match summaries: <code>csv/Match_Info.csv</code></li>
-              <li>Local ball-by-ball feed: <code>csv/Ball_By_Ball_Match_Data.csv</code></li>
-              <li>Online player directory: <code>csv/2024_players_details.csv</code> image/profile links</li>
-              <li><a href="https://www.iplt20.com/points-table/men/2026" target="_blank" rel="noreferrer">Official IPL 2026 points table</a></li>
-              <li><a href="https://www.iplt20.com/stats/2026" target="_blank" rel="noreferrer">Official IPL 2026 stats page</a></li>
-              <li><a href="https://ipl-stats-sports-mechanic.s3.ap-south-1.amazonaws.com/ipl/mc/competition.js" target="_blank" rel="noreferrer">Official IPL competition feed</a></li>
-              <li><a href="https://www.iplt20.com/teams" target="_blank" rel="noreferrer">Official IPL teams directory</a></li>
-            </ul>
-            <p class="narrative">Open this app through a local web server so the browser can fetch the CSV files correctly.</p>
-          </section>
-        </aside>
-      </section>
+            <!-- Historical Analysis Components -->
+            <section class="card">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">League Table</p>
+                  <h2>Team comparison</h2>
+                </div>
+                <p class="section-note">
+                  Rankings are based on actual results in the selected seasons, with run rates and player contribution metrics derived from the ball-by-ball data.
+                </p>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table" id="teamTable">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">Player Lens</p>
+                  <h2 id="playerSectionTitle">Squad contribution</h2>
+                </div>
+                <p class="section-note">
+                  Batting and bowling stats reflect only the selected seasons in your local data. Online links open current player profiles when available.
+                </p>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table player-table" id="playerTable">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <aside class="side-column">
+            <section class="card spotlight" id="teamSpotlight"></section>
+            <section class="card insight-panel" id="insightPanel"></section>
+          </aside>
+        </section>
+      </div>
+
+      <!-- ====================== ODDS TAB ====================== -->
+      <div id="tab-odds" class="tab-pane">
+        <section class="controls card" style="margin-bottom: 20px;">
+          <div>
+            <label for="oddsTeamSelect">Team focus</label>
+            <select id="oddsTeamSelect"></select>
+          </div>
+        </section>
+        <section class="layout">
+          <div class="main-column">
+             <section class="card" id="liveMatchPanel"></section>
+          </div>
+          <aside class="side-column">
+            <section class="card spotlight" id="liveSpotlight"></section>
+            <section class="card" id="liveOddsPanel"></section>
+          </aside>
+        </section>
+      </div>
+
     </main>
   </div>
 
