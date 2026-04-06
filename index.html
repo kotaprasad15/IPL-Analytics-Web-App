@@ -7,9 +7,66 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=latest1">
+  <link rel="stylesheet" href="styles.css?v=latest3">
 </head>
 <body>
+  <div class="analytics-bg" aria-hidden="true">
+    <div class="bg-gradient"></div>
+    <div class="bg-halo halo-left"></div>
+    <div class="bg-halo halo-right"></div>
+    <div class="bg-halo halo-bottom"></div>
+
+    <svg class="wave-field" viewBox="0 0 1440 900" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="waveBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#39a8ff" stop-opacity="0"></stop>
+          <stop offset="18%" stop-color="#39a8ff" stop-opacity="0.08"></stop>
+          <stop offset="50%" stop-color="#7fd3ff" stop-opacity="0.32"></stop>
+          <stop offset="82%" stop-color="#39a8ff" stop-opacity="0.08"></stop>
+          <stop offset="100%" stop-color="#39a8ff" stop-opacity="0"></stop>
+        </linearGradient>
+        <linearGradient id="waveGold" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#ffd679" stop-opacity="0"></stop>
+          <stop offset="24%" stop-color="#ffd679" stop-opacity="0.06"></stop>
+          <stop offset="54%" stop-color="#ffd679" stop-opacity="0.22"></stop>
+          <stop offset="100%" stop-color="#ffd679" stop-opacity="0"></stop>
+        </linearGradient>
+        <filter id="waveGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="10" result="blur"></feGaussianBlur>
+          <feMerge>
+            <feMergeNode in="blur"></feMergeNode>
+            <feMergeNode in="SourceGraphic"></feMergeNode>
+          </feMerge>
+        </filter>
+      </defs>
+      <path class="energy-wave wave-one" d="M-60 240C121 190 286 150 472 185C638 216 802 314 977 295C1112 281 1240 204 1500 233"></path>
+      <path class="energy-wave wave-two" d="M-80 462C112 397 286 363 473 399C640 432 770 523 967 520C1125 518 1270 432 1512 452"></path>
+      <path class="energy-wave wave-three" d="M-40 690C131 621 299 594 470 621C658 650 816 733 1004 727C1161 721 1289 655 1496 672"></path>
+    </svg>
+
+    <div class="light-streaks">
+      <span class="streak streak-a"></span>
+      <span class="streak streak-b"></span>
+      <span class="streak streak-c"></span>
+      <span class="streak streak-d"></span>
+    </div>
+
+    <div class="particle-field">
+      <span class="particle p1"></span>
+      <span class="particle p2"></span>
+      <span class="particle p3"></span>
+      <span class="particle p4"></span>
+      <span class="particle p5"></span>
+      <span class="particle p6"></span>
+      <span class="particle p7"></span>
+      <span class="particle p8"></span>
+      <span class="particle p9"></span>
+      <span class="particle p10"></span>
+      <span class="particle p11"></span>
+      <span class="particle p12"></span>
+    </div>
+  </div>
+
   <div class="page-shell">
     <nav class="main-nav">
       <div class="nav-left">
@@ -220,7 +277,7 @@
     </div>
   </template>
 
-  <script src="liveLayer.js?v=latest1"></script>
-  <script src="app.js?v=latest1"></script>
+  <script src="liveLayer.js?v=latest3"></script>
+  <script src="app.js?v=latest3"></script>
 </body>
 </html>
