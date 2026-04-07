@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=latest5">
+  <link rel="stylesheet" href="styles.css?v=ipl-theme-1">
 </head>
 <body>
   <div class="analytics-bg" aria-hidden="true">
@@ -19,17 +19,17 @@
     <svg class="wave-field" viewBox="0 0 1440 900" preserveAspectRatio="none">
       <defs>
         <linearGradient id="waveBlue" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#39a8ff" stop-opacity="0"></stop>
-          <stop offset="18%" stop-color="#39a8ff" stop-opacity="0.08"></stop>
-          <stop offset="50%" stop-color="#7fd3ff" stop-opacity="0.32"></stop>
-          <stop offset="82%" stop-color="#39a8ff" stop-opacity="0.08"></stop>
-          <stop offset="100%" stop-color="#39a8ff" stop-opacity="0"></stop>
+          <stop offset="0%" stop-color="#0b3d91" stop-opacity="0"></stop>
+          <stop offset="18%" stop-color="#1e5ed6" stop-opacity="0.1"></stop>
+          <stop offset="50%" stop-color="#00c2ff" stop-opacity="0.28"></stop>
+          <stop offset="82%" stop-color="#1e5ed6" stop-opacity="0.1"></stop>
+          <stop offset="100%" stop-color="#0b3d91" stop-opacity="0"></stop>
         </linearGradient>
         <linearGradient id="waveGold" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#ffd679" stop-opacity="0"></stop>
-          <stop offset="24%" stop-color="#ffd679" stop-opacity="0.06"></stop>
-          <stop offset="54%" stop-color="#ffd679" stop-opacity="0.22"></stop>
-          <stop offset="100%" stop-color="#ffd679" stop-opacity="0"></stop>
+          <stop offset="0%" stop-color="#f5c542" stop-opacity="0"></stop>
+          <stop offset="24%" stop-color="#f5c542" stop-opacity="0.08"></stop>
+          <stop offset="54%" stop-color="#f5c542" stop-opacity="0.2"></stop>
+          <stop offset="100%" stop-color="#f5c542" stop-opacity="0"></stop>
         </linearGradient>
         <filter id="waveGlow" x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="10" result="blur"></feGaussianBlur>
@@ -77,7 +77,7 @@
             <path d="M18.5 5.5A7.4 7.4 0 0 1 16 12a7.4 7.4 0 0 1 2.5 6.5"></path>
           </svg>
         </div>
-        <span style="font-weight: 700; color: var(--primary); letter-spacing: -0.02em;">IPL Analytics</span>
+        <span class="nav-brand">IPL Analytics</span>
       </div>
       <div class="nav-center">
         <button class="nav-btn active" data-tab="tab-home">Home</button>
@@ -131,20 +131,7 @@
 
         <section class="summary-grid" id="summaryGrid" style="margin-top:24px;"></section>
 
-        <section class="card source-panel" style="margin-top:24px;">
-          <p class="section-kicker">Sources</p>
-          <h2>Data inputs</h2>
-          <ul class="source-list">
-            <li>Local match summaries: <code>csv/Match_Info.csv</code></li>
-            <li>Local ball-by-ball feed: <code>csv/Ball_By_Ball_Match_Data.csv</code></li>
-            <li>Online player directory: <code>csv/2024_players_details.csv</code> image/profile links</li>
-            <li><a href="https://www.iplt20.com/points-table/men/2026" target="_blank" rel="noreferrer">Official IPL 2026 points table</a></li>
-            <li><a href="https://www.iplt20.com/stats/2026" target="_blank" rel="noreferrer">Official IPL 2026 stats page</a></li>
-            <li><a href="https://ipl-stats-sports-mechanic.s3.ap-south-1.amazonaws.com/ipl/mc/competition.js" target="_blank" rel="noreferrer">Official IPL competition feed</a></li>
-            <li><a href="https://www.iplt20.com/teams" target="_blank" rel="noreferrer">Official IPL teams directory</a></li>
-          </ul>
-          <p class="narrative">Open this app through a local web server so the browser can fetch the CSV files correctly.</p>
-        </section>
+
       </div>
 
       <!-- ====================== ANALYSIS TAB ====================== -->

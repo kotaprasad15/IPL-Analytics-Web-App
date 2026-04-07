@@ -71,7 +71,14 @@ const FAN_BETS_LEADERBOARD_SEED = [
   { name: "Midwicket Mind", points: 1710 },
   { name: "Chase Master", points: 1635 },
 ];
+/** Virtual bet cards for upcoming fixtures follow IST release windows (IPL schedule). */
+const FAN_BETS_RELEASE_TIMEZONE = "Asia/Kolkata";
+const FAN_BETS_RELEASE_MORNING_HOUR = 8;
+const FAN_BETS_RELEASE_EVENING_CLOCK_HOUR = 19;
+/** First fixture (~3:30 PM IST) vs second (~7:30 PM IST) — local start before this hour counts as afternoon. */
+const FAN_BETS_AFTERNOON_EVENING_SPLIT_HOUR = 17;
 let fanBetsSyncQueue = Promise.resolve();
+let fanBetsReleaseTimerId = null;
 
 bootstrap();
 
@@ -97,6 +104,14 @@ function bootstrap() {
       },
       onRefresh: render,
     });
+  }
+
+  if (!fanBetsReleaseTimerId) {
+    fanBetsReleaseTimerId = window.setInterval(() => {
+      if (state.fanBets) {
+        renderFanBets();
+      }
+    }, 60_000);
   }
 
   setupNavigation();
@@ -356,6 +371,10 @@ function setAuthMode(mode) {
   const registering = state.auth.mode === "register";
   if (elements.authDisplayNameField) {
     elements.authDisplayNameField.hidden = !registering;
+    elements.authDisplayNameField.style.display = registering ? "" : "none";
+  }
+  if (elements.authDisplayNameInput) {
+    elements.authDisplayNameInput.required = registering;
   }
   if (elements.authModalTitle) {
     elements.authModalTitle.textContent = registering ? "Register your fan wallet" : "Sign in to your wallet";
@@ -556,9 +575,12 @@ async function submitAuthForm() {
         return;
       }
     } else {
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) {
         throw error;
+      }
+      if (data?.session?.user) {
+        await hydrateAuthenticatedUser(data.session.user);
       }
       closeAuthModal();
     }
@@ -888,18 +910,116 @@ function renderFanBets() {
   renderFanBetsResults();
 }
 
+function getFanBetsZonedParts(epochMs) {
+  const d = new Date(numberValue(epochMs));
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FAN_BETS_RELEASE_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = formatter.formatToParts(d);
+  const map = {};
+  for (const p of parts) {
+    if (p.type !== "literal") {
+      map[p.type] = p.value;
+    }
+  }
+  const hour = Number(map.hour);
+  const minute = Number(map.minute);
+  return {
+    dateKey: `${map.year}-${map.month}-${map.day}`,
+    hour,
+    minute,
+    minutesSinceMidnight: hour * 60 + minute,
+  };
+}
+
+function addDaysToIstDateKey(dateKey, days) {
+  const [y, mo, d] = dateKey.split("-").map(Number);
+  const anchorUtc = Date.UTC(y, mo - 1, d, 6, 30, 0);
+  return getFanBetsZonedParts(anchorUtc + numberValue(days) * 86400000).dateKey;
+}
+
+function isAfternoonMatchSlot(matchStartMs) {
+  const z = getFanBetsZonedParts(matchStartMs);
+  if (!z) {
+    return false;
+  }
+  return z.minutesSinceMidnight < FAN_BETS_AFTERNOON_EVENING_SPLIT_HOUR * 60;
+}
+
+function isEveningMatchReleasedToday(matchStartMs, nowMs = Date.now()) {
+  const m = getFanBetsZonedParts(matchStartMs);
+  const n = getFanBetsZonedParts(nowMs);
+  if (!m || !n || isAfternoonMatchSlot(matchStartMs)) {
+    return false;
+  }
+  if (m.dateKey !== n.dateKey) {
+    return false;
+  }
+  return n.minutesSinceMidnight >= FAN_BETS_RELEASE_MORNING_HOUR * 60;
+}
+
+function isTomorrowAfternoonReleasedForMatch(matchStartMs, nowMs = Date.now()) {
+  if (!isAfternoonMatchSlot(matchStartMs)) {
+    return false;
+  }
+  const matchDay = getFanBetsZonedParts(matchStartMs);
+  const nowZ = getFanBetsZonedParts(nowMs);
+  if (!matchDay || !nowZ) {
+    return false;
+  }
+  const prevDayKey = addDaysToIstDateKey(matchDay.dateKey, -1);
+  if (nowZ.dateKey < prevDayKey) {
+    return false;
+  }
+  if (nowZ.dateKey > matchDay.dateKey) {
+    return false;
+  }
+  if (nowZ.dateKey === prevDayKey) {
+    return nowZ.minutesSinceMidnight >= FAN_BETS_RELEASE_EVENING_CLOCK_HOUR * 60;
+  }
+  return true;
+}
+
+function shouldIncludeUpcomingForVirtualBets(match) {
+  if (match.status !== "UpComing") {
+    return false;
+  }
+  const start = numberValue(match.startTime);
+  if (!start) {
+    return false;
+  }
+  if (isAfternoonMatchSlot(start)) {
+    return isTomorrowAfternoonReleasedForMatch(start);
+  }
+  return isEveningMatchReleasedToday(start);
+}
+
 function buildFanBetsExperience(live) {
   const sortedMatches = live
     ? live.matches
         .slice()
         .sort(compareFanBetMatches)
     : [];
-  const scoreboardMatches = sortedMatches.slice(0, 4);
-  const featuredMatch = scoreboardMatches[0] || null;
+  const liveMatches = sortedMatches.filter((m) => m.status === "Live");
+  const upcomingReleased = sortedMatches.filter(shouldIncludeUpcomingForVirtualBets);
+  const scoreboardMatches = [...liveMatches, ...upcomingReleased].slice(0, 6);
+  const featuredMatch = liveMatches[0] || upcomingReleased[0] || null;
   const markets = [];
   const marketMatches = new Map();
 
-  scoreboardMatches.forEach((match) => {
+  liveMatches.forEach((match) => {
+    marketMatches.set(match.matchId, match);
+  });
+  upcomingReleased.forEach((match) => {
     marketMatches.set(match.matchId, match);
   });
   state.fanBets.bets.forEach((bet) => {
@@ -909,9 +1029,11 @@ function buildFanBetsExperience(live) {
     }
   });
 
-  Array.from(marketMatches.values()).forEach((match) => {
-    markets.push(...buildMarketsForMatch(match, live));
-  });
+  Array.from(marketMatches.values())
+    .sort(compareFanBetMatches)
+    .forEach((match) => {
+      markets.push(...buildMarketsForMatch(match, live));
+    });
   state.fanBets.bets.forEach((bet) => {
     if (!markets.find((market) => market.id === bet.marketId)) {
       const trackedMarket = buildTrackedMarketForActiveBet(bet, live);
@@ -1021,9 +1143,32 @@ function buildMarketsForMatch(match, live) {
     });
   }
 
-  const livePropMarket = buildNextWicketMarket(match);
+  if (match.status === "Live") {
+    const liveSummary = pickCurrentInningsSummary(match);
+    if (liveSummary) {
+      updateLiveOverRoller(match, liveSummary);
+    }
+    const powerplayMarket = buildLivePowerplaySixMarket(match);
+    if (powerplayMarket) {
+      markets.push(powerplayMarket);
+    }
+    const thisOverMarket = buildLiveThisOverRunsMarket(match);
+    if (thisOverMarket) {
+      markets.push(thisOverMarket);
+    }
+    const deathMarket = buildLiveDeath1520Market(match);
+    if (deathMarket) {
+      markets.push(deathMarket);
+    }
+  }
+
+  const livePropMarket = buildNextWicketWindowMarket(match, 2);
   if (livePropMarket) {
     markets.push(livePropMarket);
+  }
+  const livePropQuick = buildNextWicketWindowMarket(match, 1);
+  if (livePropQuick) {
+    markets.push(livePropQuick);
   }
 
   return markets;
@@ -1043,7 +1188,7 @@ function createPlayerDuelBaseline(marketId, playerA, playerB, live, matchStatus)
   return baseline;
 }
 
-function buildNextWicketMarket(match) {
+function buildNextWicketWindowMarket(match, overLead) {
   if (match.status !== "Live") {
     return null;
   }
@@ -1053,9 +1198,12 @@ function buildNextWicketMarket(match) {
     return null;
   }
 
-  const targetOver = Math.min(20, Math.ceil(liveSummary.overs || 0) + 2);
+  const targetOver = Math.min(20, Math.ceil(liveSummary.overs || 0) + overLead);
   const targetBalls = targetOver * 6;
-  const marketId = `next-wicket-${match.matchId}-${match.currentInnings || 1}-${targetOver}`;
+  const marketId =
+    overLead === 1
+      ? `next-wicket-quick-${match.matchId}-${match.currentInnings || 1}-${targetOver}`
+      : `next-wicket-${match.matchId}-${match.currentInnings || 1}-${targetOver}`;
   const baseline =
     state.fanBets.marketBaselines[marketId] ||
     {
@@ -1071,52 +1219,343 @@ function buildNextWicketMarket(match) {
 
   const outcome = resolveNextWicketOutcome(match, baseline);
   const stillOpen = !outcome && liveSummary.balls < baseline.targetBalls;
+  const windowLabel = overLead === 1 ? "Quick window" : "Standard window";
 
   return {
     id: marketId,
     matchId: match.matchId,
     matchName: match.matchName,
     type: "live-prop",
-    title: `When does the next wicket fall?`,
-    subtitle: `Current over ${formatNumber(liveSummary.overs, 1)}. Predict the wicket window.`,
+    title: overLead === 1 ? `Next wicket — tight window` : `When does the next wicket fall?`,
+    subtitle:
+      overLead === 1
+        ? `${windowLabel}: before ${targetOver}.0 overs (${formatNumber(liveSummary.overs, 1)} ov now).`
+        : `Current over ${formatNumber(liveSummary.overs, 1)}. Predict the wicket window.`,
     status: stillOpen ? "open" : "locked",
     statusLabel: stillOpen ? "Live" : outcome ? "Settled" : "Locked",
     lockNote: stillOpen ? `Window closes at ${targetOver}.0 overs` : "Live window closed",
     options: [
-      { id: "before", label: `Before ${targetOver}.0 overs`, payoutMultiplier: 2.1 },
-      { id: "after", label: `${targetOver}.0 overs or later`, payoutMultiplier: 2.1 },
+      { id: "before", label: `Before ${targetOver}.0 overs`, payoutMultiplier: overLead === 1 ? 1.95 : 2.1 },
+      { id: "after", label: `${targetOver}.0 overs or later`, payoutMultiplier: overLead === 1 ? 1.95 : 2.1 },
     ],
     outcome,
-    badge: "Live Prop",
+    badge: overLead === 1 ? "Live · Next wicket" : "Live Prop",
+  };
+}
+
+const LIVE_THIS_OVER_LINE = 8.5;
+const LIVE_PP6_LINE = 52.5;
+const LIVE_DEATH_LINE = 54.5;
+
+function updateLiveOverRoller(match, summary) {
+  const inn = match.currentInnings || 1;
+  const key = `overRoller-${match.matchId}-${inn}`;
+  const ceilNow = Math.ceil(numberValue(summary.overs) || 0);
+  let roller = state.fanBets.marketBaselines[key];
+  if (!roller || roller.type !== "overRoller") {
+    roller = {
+      type: "overRoller",
+      activeCeil: Math.max(1, ceilNow),
+      runAtStart: numberValue(summary.runs),
+      line: LIVE_THIS_OVER_LINE,
+    };
+    state.fanBets.marketBaselines[key] = roller;
+    return;
+  }
+  if (ceilNow > roller.activeCeil) {
+    const completedRuns = numberValue(summary.runs) - roller.runAtStart;
+    const settleId = `live-this-over-${match.matchId}-${inn}-${roller.activeCeil}`;
+    state.fanBets.marketBaselines[settleId] = {
+      type: "live-this-over",
+      line: roller.line,
+      runs: completedRuns,
+    };
+    roller.runAtStart = numberValue(summary.runs);
+    roller.activeCeil = ceilNow;
+  }
+  state.fanBets.marketBaselines[key] = roller;
+}
+
+function buildLivePowerplaySixMarket(match) {
+  if (match.status !== "Live") {
+    return null;
+  }
+  const inn = match.currentInnings || 1;
+  const sum = pickCurrentInningsSummary(match, inn);
+  if (!sum || sum.wickets >= 10) {
+    return null;
+  }
+  const snapKey = `pp6snap-${match.matchId}-${inn}`;
+  let snap = state.fanBets.marketBaselines[snapKey];
+  if (!snap || snap.type !== "pp6snap") {
+    snap = { type: "pp6snap", at6: null };
+  }
+  if (sum.overs >= 6 && snap.at6 == null) {
+    snap.at6 = numberValue(sum.runs);
+  }
+  if (sum.wickets >= 10 && sum.overs < 6 && snap.at6 == null) {
+    snap.at6 = numberValue(sum.runs);
+  }
+  state.fanBets.marketBaselines[snapKey] = snap;
+
+  const marketId = `live-pp6-${match.matchId}-${inn}`;
+  const line = LIVE_PP6_LINE;
+  const stillOpen = sum.overs < 6 && sum.wickets < 10;
+  const outcome =
+    snap.at6 != null
+      ? snap.at6 > line
+        ? "over"
+        : snap.at6 < line
+          ? "under"
+          : "push"
+      : null;
+
+  if (snap.at6 != null) {
+    state.fanBets.marketBaselines[marketId] = { type: "live-pp6", line, at6: snap.at6 };
+  }
+
+  return {
+    id: marketId,
+    matchId: match.matchId,
+    matchName: match.matchName,
+    type: "live-prop",
+    title: `Powerplay (first 6 overs) — over or under ${line} runs?`,
+    subtitle: `Innings ${inn} · ${stillOpen ? `${formatNumber(sum.overs, 1)} overs` : "Powerplay complete"}.`,
+    status: stillOpen ? "open" : "locked",
+    statusLabel: stillOpen ? "Live" : outcome ? "Settled" : "Locked",
+    lockNote: stillOpen ? "Locks after 6 overs" : "Powerplay closed",
+    options: [
+      { id: "over", label: `Over ${line}`, payoutMultiplier: 1.9 },
+      { id: "under", label: `Under ${line}`, payoutMultiplier: 1.9 },
+    ],
+    outcome,
+    badge: "Live · Powerplay",
+  };
+}
+
+function buildLiveThisOverRunsMarket(match) {
+  if (match.status !== "Live") {
+    return null;
+  }
+  const inn = match.currentInnings || 1;
+  const summary = pickCurrentInningsSummary(match, inn);
+  if (!summary || summary.wickets >= 10 || summary.overs >= 20) {
+    return null;
+  }
+  const line = LIVE_THIS_OVER_LINE;
+  const ceilNow = Math.ceil(numberValue(summary.overs) || 0);
+  const marketId = `live-this-over-${match.matchId}-${inn}-${ceilNow}`;
+  const roller = state.fanBets.marketBaselines[`overRoller-${match.matchId}-${inn}`];
+  const runsThisOver =
+    roller && roller.type === "overRoller" ? numberValue(summary.runs) - numberValue(roller.runAtStart) : 0;
+
+  const settled = state.fanBets.marketBaselines[marketId];
+  let outcome = null;
+  if (settled && settled.type === "live-this-over" && settled.runs != null) {
+    outcome =
+      settled.runs > settled.line
+        ? "over"
+        : settled.runs < settled.line
+          ? "under"
+          : "push";
+  }
+
+  const stillOpen = !outcome && summary.wickets < 10 && summary.overs < 20;
+
+  return {
+    id: marketId,
+    matchId: match.matchId,
+    matchName: match.matchName,
+    type: "live-prop",
+    title: `This over — over or under ${line} runs?`,
+    subtitle: `Over ${formatNumber(summary.overs, 1)} · ${formatNumber(runsThisOver, 0)} runs so far this over.`,
+    status: stillOpen ? "open" : "locked",
+    statusLabel: outcome ? "Settled" : stillOpen ? "Live" : "Locked",
+    lockNote: stillOpen ? "Locks when this over ends" : "Over complete",
+    options: [
+      { id: "over", label: `Over ${line}`, payoutMultiplier: 1.95 },
+      { id: "under", label: `Under ${line}`, payoutMultiplier: 1.95 },
+    ],
+    outcome,
+    badge: "Live · This over",
+  };
+}
+
+function buildLiveDeath1520Market(match) {
+  if (match.status !== "Live") {
+    return null;
+  }
+  const inn = match.currentInnings || 1;
+  const sum = pickCurrentInningsSummary(match, inn);
+  if (!sum) {
+    return null;
+  }
+  const snapKey = `snap15-${match.matchId}-${inn}`;
+  let snap = state.fanBets.marketBaselines[snapKey];
+  if (!snap || snap.type !== "snap15") {
+    snap = { type: "snap15", at15: null };
+  }
+  if (sum.overs >= 15 && snap.at15 == null) {
+    snap.at15 = numberValue(sum.runs);
+  }
+  state.fanBets.marketBaselines[snapKey] = snap;
+
+  const line = LIVE_DEATH_LINE;
+  const inningsDone = sum.wickets >= 10 || sum.overs >= 20;
+  const active = sum.overs >= 15 && sum.overs < 20 && sum.wickets < 10;
+  const deathRuns = snap.at15 != null && inningsDone ? numberValue(sum.runs) - snap.at15 : null;
+  const outcome =
+    deathRuns != null
+      ? deathRuns > line
+        ? "over"
+        : deathRuns < line
+          ? "under"
+          : "push"
+      : null;
+
+  const marketId = `live-death1520-${match.matchId}-${inn}`;
+
+  if (deathRuns != null) {
+    state.fanBets.marketBaselines[marketId] = { type: "live-death1520", line, deathRuns };
+  }
+
+  return {
+    id: marketId,
+    matchId: match.matchId,
+    matchName: match.matchName,
+    type: "live-prop",
+    title: `Death overs (15–20) — over or under ${line} runs?`,
+    subtitle: `Innings ${inn} · runs scored from over 15 onwards.`,
+    status: active ? "open" : "locked",
+    statusLabel: active ? "Live" : outcome ? "Settled" : "Locked",
+    lockNote: active ? "Locks when the innings ends" : "Window closed",
+    options: [
+      { id: "over", label: `Over ${line}`, payoutMultiplier: 1.9 },
+      { id: "under", label: `Under ${line}`, payoutMultiplier: 1.9 },
+    ],
+    outcome,
+    badge: "Live · Death overs",
   };
 }
 
 function buildTrackedMarketForActiveBet(bet, live) {
-  if (!bet || !String(bet.marketId).startsWith("next-wicket-")) {
+  if (!bet?.marketId) {
     return null;
   }
-  const match = (live?.matches || []).find((entry) => entry.matchId === bet.matchId);
-  const baseline = state.fanBets.marketBaselines[bet.marketId];
-  if (!match || !baseline) {
-    return null;
+  const id = bet.marketId;
+  if (id.startsWith("next-wicket-")) {
+    const match = (live?.matches || []).find((entry) => entry.matchId === bet.matchId);
+    const baseline = state.fanBets.marketBaselines[id];
+    if (!match || !baseline) {
+      return null;
+    }
+    const outcome = resolveNextWicketOutcome(match, baseline);
+    const mult = id.includes("quick") ? 1.95 : 2.1;
+    return {
+      id,
+      matchId: bet.matchId,
+      matchName: bet.matchName,
+      type: "live-prop",
+      title: bet.title,
+      subtitle: `Tracked live prop from ${formatDateTime(bet.placedAt)}.`,
+      status: "locked",
+      statusLabel: outcome ? "Settled" : "Locked",
+      lockNote: `Window closed at ${baseline.targetOver}.0 overs`,
+      options: [
+        { id: "before", label: `Before ${baseline.targetOver}.0 overs`, payoutMultiplier: mult },
+        { id: "after", label: `${baseline.targetOver}.0 overs or later`, payoutMultiplier: mult },
+      ],
+      outcome,
+      badge: bet.badge || "Live Prop",
+    };
   }
-  return {
-    id: bet.marketId,
-    matchId: bet.matchId,
-    matchName: bet.matchName,
-    type: "live-prop",
-    title: bet.title,
-    subtitle: `Tracked live prop from ${formatDateTime(bet.placedAt)}.`,
-    status: "locked",
-    statusLabel: resolveNextWicketOutcome(match, baseline) ? "Settled" : "Locked",
-    lockNote: `Window closed at ${baseline.targetOver}.0 overs`,
-    options: [
-      { id: "before", label: `Before ${baseline.targetOver}.0 overs`, payoutMultiplier: 2.1 },
-      { id: "after", label: `${baseline.targetOver}.0 overs or later`, payoutMultiplier: 2.1 },
-    ],
-    outcome: resolveNextWicketOutcome(match, baseline),
-    badge: "Live Prop",
-  };
+  if (id.startsWith("live-pp6-")) {
+    const settled = state.fanBets.marketBaselines[id];
+    const outcome =
+      settled && settled.type === "live-pp6"
+        ? settled.at6 > settled.line
+          ? "over"
+          : settled.at6 < settled.line
+            ? "under"
+            : "push"
+        : null;
+    return {
+      id,
+      matchId: bet.matchId,
+      matchName: bet.matchName,
+      type: "live-prop",
+      title: bet.title,
+      subtitle: `Tracked from ${formatDateTime(bet.placedAt)}.`,
+      status: "locked",
+      statusLabel: outcome ? "Settled" : "Locked",
+      lockNote: "Powerplay complete",
+      options: [
+        { id: "over", label: `Over ${LIVE_PP6_LINE}`, payoutMultiplier: 1.9 },
+        { id: "under", label: `Under ${LIVE_PP6_LINE}`, payoutMultiplier: 1.9 },
+      ],
+      outcome,
+      badge: bet.badge || "Live · Powerplay",
+    };
+  }
+  if (id.startsWith("live-this-over-")) {
+    const settled = state.fanBets.marketBaselines[id];
+    let outcome = null;
+    if (settled && settled.type === "live-this-over" && settled.runs != null) {
+      outcome =
+        settled.runs > settled.line
+          ? "over"
+          : settled.runs < settled.line
+            ? "under"
+            : "push";
+    }
+    return {
+      id,
+      matchId: bet.matchId,
+      matchName: bet.matchName,
+      type: "live-prop",
+      title: bet.title,
+      subtitle: `Tracked from ${formatDateTime(bet.placedAt)}.`,
+      status: "locked",
+      statusLabel: outcome ? "Settled" : "Locked",
+      lockNote: "Over complete",
+      options: [
+        { id: "over", label: `Over ${LIVE_THIS_OVER_LINE}`, payoutMultiplier: 1.95 },
+        { id: "under", label: `Under ${LIVE_THIS_OVER_LINE}`, payoutMultiplier: 1.95 },
+      ],
+      outcome,
+      badge: bet.badge || "Live · This over",
+    };
+  }
+  if (id.startsWith("live-death1520-")) {
+    const settled = state.fanBets.marketBaselines[id];
+    let outcome = null;
+    if (settled && settled.type === "live-death1520" && settled.deathRuns != null) {
+      outcome =
+        settled.deathRuns > settled.line
+          ? "over"
+          : settled.deathRuns < settled.line
+            ? "under"
+            : "push";
+    }
+    return {
+      id,
+      matchId: bet.matchId,
+      matchName: bet.matchName,
+      type: "live-prop",
+      title: bet.title,
+      subtitle: `Tracked from ${formatDateTime(bet.placedAt)}.`,
+      status: "locked",
+      statusLabel: outcome ? "Settled" : "Locked",
+      lockNote: "Innings complete",
+      options: [
+        { id: "over", label: `Over ${LIVE_DEATH_LINE}`, payoutMultiplier: 1.9 },
+        { id: "under", label: `Under ${LIVE_DEATH_LINE}`, payoutMultiplier: 1.9 },
+      ],
+      outcome,
+      badge: bet.badge || "Live · Death overs",
+    };
+  }
+  return null;
 }
 
 function resolveWinnerOutcome(match, firstScore, secondScore) {
@@ -1430,7 +1869,9 @@ function renderFanBetsScoreboard(experience) {
 function renderFanBetsMarkets(experience) {
   const markets = experience.markets.filter((market) => market.status === "open" || market.status === "locked");
   if (!markets.length) {
-    elements.fanBetsMarkets.innerHTML = `<p class="narrative">No live or upcoming fun markets are available yet. When a match feed appears, Fan Bets will create prop cards automatically.</p>`;
+    elements.fanBetsMarkets.innerHTML = `<p class="narrative">No virtual markets are open yet. Pre-match cards unlock at <strong>8:00 AM</strong> ${escapeHtml(
+      FAN_BETS_RELEASE_TIMEZONE.replace(/_/g, " ")
+    )} for that evening's match and at <strong>7:00 PM</strong> for the next afternoon match. In-play props still appear once a game goes live.</p>`;
     return;
   }
 
@@ -1650,15 +2091,47 @@ function render() {
   elements.playerSectionTitle.textContent = `${selectedTeam.team} player contribution`;
 }
 
+// Resolve logo URL from live state (if available)
+function getLiveLogoUrl(teamName) {
+  const liveTable = state.live?.table || [];
+  const row = liveTable.find((r) => r.team === teamName);
+  return row ? (row.logoUrl || "") : "";
+}
+
+// Map team name to CSS theme slug (mirrors liveLayer.js teamThemeSlug)
+function getTeamSlug(teamName) {
+  const map = {
+    "Royal Challengers Bengaluru": "rcb",
+    "Royal Challengers Bangalore": "rcb",
+    "Mumbai Indians": "mi",
+    "Chennai Super Kings": "csk",
+    "Kolkata Knight Riders": "kkr",
+    "Delhi Capitals": "dc",
+    "Sunrisers Hyderabad": "srh",
+    "Rajasthan Royals": "rr",
+    "Punjab Kings": "pbks",
+    "Gujarat Titans": "gt",
+    "Lucknow Super Giants": "lsg",
+  };
+  return map[String(teamName || "").trim()] || "default";
+}
+
 function renderResultsBand() {
   elements.resultsBand.innerHTML = state.data.seasonResults
-    .map((result) => `
-      <article class="result-card">
-        <span>${result.season} champion</span>
-        <strong>${escapeHtml(result.winner || "Unknown")}</strong>
-        <p>${escapeHtml(result.finalist1)} vs ${escapeHtml(result.finalist2)}</p>
-      </article>
-    `)
+    .map((result) => {
+      const teamName = result.winner || "Unknown";
+      const slug = getTeamSlug(teamName);
+      const logoUrl = getLiveLogoUrl(teamName);
+      const logoStyle = logoUrl ? ` style="--row-hover-logo:url('${logoUrl.replace(/'/g, "\\'")}')"` : "";
+      
+      return `
+        <article class="result-card result-card--team" data-team-theme="${slug}"${logoStyle}>
+          <span>${result.season} champion</span>
+          <strong>${escapeHtml(teamName)}</strong>
+          <p>${escapeHtml(result.finalist1)} vs ${escapeHtml(result.finalist2)}</p>
+        </article>
+      `;
+    })
     .join("");
 }
 
@@ -1668,29 +2141,24 @@ function renderSummaryGrid(teams) {
   const bestBowling = teams.reduce((best, row) => (row.bowlingEconomy < best.bowlingEconomy ? row : best), teams[0]);
   const bestWicketSide = teams.reduce((best, row) => (row.wicketRate > best.wicketRate ? row : best), teams[0]);
 
-  elements.summaryGrid.innerHTML = `
-    <article class="summary-card">
-      <span>Best win rate</span>
-      <strong>${escapeHtml(bestWinRate.team)}</strong>
-      <p>${formatPercent(bestWinRate.winRate)} across the selected view</p>
-    </article>
-    <article class="summary-card">
-      <span>Best batting output</span>
-      <strong>${escapeHtml(bestBatting.team)}</strong>
-      <p>${formatNumber(bestBatting.avgScore, 1)} runs per innings</p>
-    </article>
-    <article class="summary-card">
-      <span>Tightest bowling</span>
-      <strong>${escapeHtml(bestBowling.team)}</strong>
-      <p>${formatNumber(bestBowling.bowlingEconomy, 2)} economy rate</p>
-    </article>
-    <article class="summary-card">
-      <span>Most wickets per match</span>
-      <strong>${escapeHtml(bestWicketSide.team)}</strong>
-      <p>${formatNumber(bestWicketSide.wicketRate, 2)} wickets each game</p>
-    </article>
-  `;
+  function teamCard(label, teamName, body) {
+    const slug = getTeamSlug(teamName);
+    const logoUrl = getLiveLogoUrl(teamName);
+    const logoStyle = logoUrl ? ` style="--row-hover-logo:url('${logoUrl.replace(/'/g, "\\'")}')"` : "";
+    return `<article class="summary-card summary-card--team" data-team-theme="${slug}"${logoStyle}>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(teamName)}</strong>
+      <p>${body}</p>
+    </article>`;
+  }
+
+  elements.summaryGrid.innerHTML =
+    teamCard("Best win rate", bestWinRate.team, `${formatPercent(bestWinRate.winRate)} across the selected view`) +
+    teamCard("Best batting output", bestBatting.team, `${formatNumber(bestBatting.avgScore, 1)} runs per innings`) +
+    teamCard("Tightest bowling", bestBowling.team, `${formatNumber(bestBowling.bowlingEconomy, 2)} economy rate`) +
+    teamCard("Most wickets per match", bestWicketSide.team, `${formatNumber(bestWicketSide.wicketRate, 2)} wickets each game`);
 }
+
 
 function renderTeamTable(teams) {
   const sorted = [...teams].sort((a, b) => {

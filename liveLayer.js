@@ -302,34 +302,67 @@
         return b.wickets - a.wickets;
       })[0];
 
+    function getTeamLogoUrl(teamName) {
+      const row = live.table.find(function (r) { return r.team === teamName; });
+      return row ? (row.logoUrl || "") : "";
+    }
+
+    function buildTeamSummaryCard(label, teamName, body, logoUrl) {
+      const theme = teamThemeSlug(teamName);
+      const logoStyle = logoUrl ? " style=\"--row-hover-logo:url('" + logoUrl.replace(/'/g, "\\'") + "')\"" : "";
+      return (
+        "<article class=\"summary-card summary-card--team\" data-team-theme=\"" + theme + "\"" + logoStyle + ">" +
+        "<span>" + escapeHtml(label) + "</span>" +
+        "<strong>" + escapeHtml(teamName) + "</strong>" +
+        "<p>" + body + "</p>" +
+        "</article>"
+      );
+    }
+
+    function buildPlayerSummaryCard(label, playerName, body, playerImgUrl, logoUrl) {
+      const safePlayer = (playerImgUrl || "").replace(/'/g, "\\'");
+      const safeLogo = (logoUrl || "").replace(/'/g, "\\'");
+      const imgStyle = playerImgUrl
+        ? " style=\"--player-img:url('" + safePlayer + "');--team-logo:url('" + safeLogo + "')\""
+        : "";
+      return (
+        "<article class=\"summary-card summary-card--player\"" + imgStyle + ">" +
+        "<span>" + escapeHtml(label) + "</span>" +
+        "<strong>" + escapeHtml(playerName) + "</strong>" +
+        "<p>" + body + "</p>" +
+        "</article>"
+      );
+    }
+
     layerState.elements.liveSummaryGrid.innerHTML =
-      '<article class="summary-card"><span>Current table leader</span><strong>' +
-      escapeHtml(currentLeader.team) +
-      "</strong><p>" +
-      currentLeader.points +
-      " points, " +
-      escapeHtml(formatSignedNumber(currentLeader.netRunRate, 3)) +
-      " NRR</p></article>" +
-      '<article class="summary-card"><span>Strongest title odds</span><strong>' +
-      escapeHtml(topOdds.team) +
-      "</strong><p>" +
-      formatPercent(topOdds.winnerOdds) +
-      " simulated winner chance</p></article>" +
-      '<article class="summary-card"><span>Top scorer right now</span><strong>' +
-      escapeHtml(topBatter.player) +
-      "</strong><p>" +
-      topBatter.runs +
-      " runs for " +
-      escapeHtml(topBatter.team) +
-      "</p></article>" +
-      '<article class="summary-card"><span>Top wicket-taker right now</span><strong>' +
-      escapeHtml(topBowler.player) +
-      "</strong><p>" +
-      topBowler.wickets +
-      " wickets for " +
-      escapeHtml(topBowler.team) +
-      "</p></article>";
+      buildTeamSummaryCard(
+        "Current table leader",
+        currentLeader.team,
+        currentLeader.points + " points, " + escapeHtml(formatSignedNumber(currentLeader.netRunRate, 3)) + " NRR",
+        currentLeader.logoUrl || getTeamLogoUrl(currentLeader.team)
+      ) +
+      buildTeamSummaryCard(
+        "Strongest title odds",
+        topOdds.team,
+        formatPercent(topOdds.winnerOdds) + " simulated winner chance",
+        topOdds.logoUrl || getTeamLogoUrl(topOdds.team)
+      ) +
+      buildPlayerSummaryCard(
+        "Top scorer right now",
+        topBatter.player,
+        topBatter.runs + " runs for " + escapeHtml(topBatter.team),
+        topBatter.imageUrl || "",
+        getTeamLogoUrl(topBatter.team)
+      ) +
+      buildPlayerSummaryCard(
+        "Top wicket-taker right now",
+        topBowler.player,
+        topBowler.wickets + " wickets for " + escapeHtml(topBowler.team),
+        topBowler.imageUrl || "",
+        getTeamLogoUrl(topBowler.team)
+      );
   }
+
 
   function renderLiveTable(live) {
     const elements = layerState.elements;
@@ -346,7 +379,11 @@
     elements.liveTable.querySelector("tbody").innerHTML = sorted
       .map(function (row) {
         return (
-          "<tr><td><span class=\"rank-chip\">" +
+          "<tr class=\"live-team-row\"" +
+          rowHoverLogoStyle(row.logoUrl) +
+          ' data-team-theme="' +
+          teamThemeSlug(row.team) +
+          "\"><td><span class=\"rank-chip\">" +
           row.currentRank +
           '</span></td><td><button class="link-button" data-live-team="' +
           escapeHtml(row.team) +
@@ -422,6 +459,8 @@
   }
 
   function renderLiveSpotlight(live, team, players) {
+    layerState.elements.liveSpotlight.setAttribute("data-team-theme", teamThemeSlug(team.team));
+
     const topBatter = players
       .slice()
       .sort(function (a, b) {
@@ -511,14 +550,21 @@
       '</strong></div></div><ul class="compact-list">' +
       sorted
         .map(function (row) {
+          const logo = row.logoUrl
+            ? '<img src="' + escapeHtml(row.logoUrl) + '" alt="" loading="lazy">'
+            : '<span>' + escapeHtml(initials(row.team)) + "</span>";
           return (
-            "<li><strong>" +
+            '<li class="entity-hover-card team-entity"' +
+            cardThemeAttrs(row.team, row.logoUrl) +
+            '><div class="entity-media">' +
+            logo +
+            '</div><div class="entity-body"><strong>' +
             escapeHtml(row.team) +
             "</strong><span>" +
             formatPercent(row.winnerOdds) +
             " winner odds, " +
             formatPercent(row.topFourOdds) +
-            " top 4</span></li>"
+            " top 4</span></div></li>"
           );
         })
         .join("") +
@@ -1212,6 +1258,41 @@
     return aliases[cleaned] || cleaned;
   }
 
+  function teamThemeSlug(teamName) {
+    const map = {
+      "Royal Challengers Bengaluru": "rcb",
+      "Royal Challengers Bangalore": "rcb",
+      "Mumbai Indians": "mi",
+      "Chennai Super Kings": "csk",
+      "Kolkata Knight Riders": "kkr",
+      "Delhi Capitals": "dc",
+      "Sunrisers Hyderabad": "srh",
+      "Rajasthan Royals": "rr",
+      "Punjab Kings": "pbks",
+      "Gujarat Titans": "gt",
+      "Lucknow Super Giants": "lsg",
+    };
+    const cleaned = String(teamName || "").replace(/\s+/g, " ").trim();
+    return map[cleaned] || "default";
+  }
+
+  function rowHoverLogoStyle(logoUrl) {
+    if (!logoUrl) {
+      return "";
+    }
+    const safe = String(logoUrl).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    return " style=\"--row-hover-logo: url('" + safe + "')\"";
+  }
+
+  function cardThemeAttrs(teamName, logoUrl) {
+    return (
+      ' data-team-theme="' +
+      teamThemeSlug(teamName) +
+      '"' +
+      rowHoverLogoStyle(logoUrl)
+    );
+  }
+
   function cleanLivePlayerName(name) {
     return String(name || "")
       .replace(/\([^)]*\)/g, "")
@@ -1236,14 +1317,21 @@
     if (!player) {
       return '<div class="top-player-card"><span>' + escapeHtml(label) + "</span><strong>No sample</strong></div>";
     }
+    const media = player.imageUrl
+      ? '<img src="' + escapeHtml(player.imageUrl) + '" alt="" loading="lazy">'
+      : '<span>' + escapeHtml(initials(player.player)) + "</span>";
     return (
-      '<div class="top-player-card"><span>' +
+      '<div class="top-player-card entity-hover-card player-entity"' +
+      cardThemeAttrs(player.team, player.imageUrl) +
+      '><div class="entity-media">' +
+      media +
+      '</div><div class="entity-body"><span>' +
       escapeHtml(label) +
       "</span><strong>" +
       escapeHtml(player.player) +
       "</strong><p>" +
       escapeHtml(statText) +
-      "</p></div>"
+      "</p></div></div>"
     );
   }
 
