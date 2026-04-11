@@ -10,7 +10,9 @@
     topRuns: "ontoprunsscorers",
     topWickets: "onmostwickets",
     squad: "onCompetitionSquad",
+    innings: "OverHistory",
   };
+
 
   const layerState = {
     sharedState: null,
@@ -110,6 +112,39 @@
         topWicketsPayload: topWicketsPayload,
         squadPayload: squadPayload,
       });
+
+      // Fetch current-over ball-by-ball data for any live match
+      const liveMatches = liveState.matches.filter(function (m) { return m.status === 'Live'; });
+      if (liveMatches.length > 0) {
+        await Promise.all(liveMatches.map(async function (match) {
+          try {
+            const inningsNo = match.currentInnings || 1;
+            const inningsUrl = "https://scores.iplt20.com/ipl/feeds/" + match.matchId + "-Innings" + inningsNo + ".js";
+            const inningsPayload = await loadJsonpSilent(inningsUrl, JSONP_CALLBACKS.innings);
+            const balls = Array.isArray(inningsPayload) ? inningsPayload : [];
+            // Find the highest completed OverNo in the data
+            const validBalls = balls.filter(function (b) { return b.BallID && b.OverNo; });
+            if (validBalls.length === 0) return;
+            const maxOver = Math.max.apply(null, validBalls.map(function (b) { return Number(b.OverNo); }));
+            const currentOverBalls = validBalls
+              .filter(function (b) { return Number(b.OverNo) === maxOver; })
+              .sort(function (a, b) { return Number(a.SNO) - Number(b.SNO); })
+              .map(function (b) {
+                return {
+                  label: b.IsWicket === '1' ? 'W' : b.IsWide === '1' ? 'wd' : b.IsNoBall === '1' ? 'nb' : String(b.BallRuns || '0'),
+                  isWicket: b.IsWicket === '1',
+                  isExtra: b.IsWide === '1' || b.IsNoBall === '1',
+                  isFour: b.IsFour === '1',
+                  isSix: b.IsSix === '1',
+                };
+              });
+            match.currentOverBalls = currentOverBalls;
+            match.currentOverNo = maxOver;
+          } catch (e) {
+            // silently ignore — ball data is enhancement only
+          }
+        }));
+      }
 
       layerState.sharedState.live = liveState;
       if (!layerState.sharedState.selectedTeam && liveState.teams.length) {
@@ -261,9 +296,13 @@
         return a.startTime - b.startTime;
       })[0];
 
+    const tossMatches = live.matches.filter(function (match) {
+      return match.status !== "Live" && match.status !== "Post" && match.isTossCompleted;
+    });
+
     elements.liveStatusBanner.innerHTML =
       '<div class="status-stack"><span class="status-dot ' +
-      (liveMatches.length ? "live" : "ok") +
+      (liveMatches.length ? "live" : tossMatches.length ? "warning" : "ok") +
       '"></span><div><p class="section-kicker">Live Feed</p><h2>' +
       escapeHtml(live.competitionName) +
       "</h2><p class=\"narrative\">Official standings, squads, batting stats, bowling stats, and fixtures loaded successfully. Last refresh: " +
@@ -272,9 +311,11 @@
       escapeHtml(
         liveMatches.length
           ? liveMatches.length + " live match" + (liveMatches.length > 1 ? "es are" : " is") + " underway."
-          : nextMatch
-            ? "Next scheduled match: " + nextMatch.matchName + "."
-            : "No upcoming matches were found in the current feed."
+          : tossMatches.length
+            ? tossMatches.length + " match" + (tossMatches.length > 1 ? "es have" : " has") + " completed the toss and will start soon."
+            : nextMatch
+              ? "Next scheduled match: " + nextMatch.matchName + "."
+              : "No upcoming matches were found in the current feed."
       ) +
       "</p></div></div>";
   }
@@ -575,21 +616,12 @@
 
   function renderLiveMatchPanel(live, team) {
     const liveMatches = live.matches.filter(function (match) {
-      return match.status === "Live";
+      return match.status === "Live" || (match.status === "UpComing" && match.isTossCompleted);
     }).slice(0, 2);
-    const recentMatch = live.matches
-      .filter(function (match) {
-        return (
-          match.status === "Post" &&
-          (match.teamA === team.team || match.teamB === team.team)
-        );
-      })
-      .sort(function (a, b) {
-        return b.startTime - a.startTime;
-      })[0];
+
     const upcomingMatches = live.matches
       .filter(function (match) {
-        return match.status === "UpComing";
+        return match.status === "UpComing" && !match.isTossCompleted;
       })
       .sort(function (a, b) {
         return a.startTime - b.startTime;
@@ -601,12 +633,7 @@
       (liveMatches.length
         ? '<div class="match-stack">' + liveMatches.map(renderMatchCard).join("") + "</div>"
         : '<p class="narrative">No match is live at this exact refresh.</p>') +
-      (recentMatch
-        ? '<p class="section-kicker subtle-kicker">Latest ' +
-          escapeHtml(team.team) +
-          " result</p>" +
-          renderMatchCard(recentMatch)
-        : "") +
+
       (upcomingMatches.length
         ? '<p class="section-kicker subtle-kicker">Next upcoming fixtures</p><div class="match-stack">' +
           upcomingMatches.map(renderMatchCard).join("") +
@@ -910,6 +937,12 @@
           bowlerOvers: row.BowlerOvers || "0.0",
           bowlerRuns: row.BowlerRuns || 0,
           bowlerWickets: row.BowlerWickets || 0,
+          tossWinner: row.TossWinnerTeamCode || row.TossWinnerTeamId || "",
+          tossWinnerName: canonicalTeam(row.TossWinnerTeamName || ""),
+          tossTeam: canonicalTeam(row.TossTeam || ""),
+          tossDecision: row.TossDecision || "",
+          tossText: row.TossText || "",
+          isTossCompleted: Boolean(row.TossWinnerTeamCode || row.TossWinnerTeamId || row.TossWinnerTeamName || row.TossTeam || row.TossText),
         };
       })
       .filter(function (match) {
@@ -1339,13 +1372,21 @@
     const statusText =
       match.status === "Live"
         ? "Live"
-        : match.status === "Post"
-          ? "Completed"
-          : formatDateTime(match.startTime);
+        : (match.isTossCompleted && match.status === "UpComing")
+          ? "Toss Done"
+          : match.status === "Post"
+            ? "Completed"
+            : formatDateTime(match.startTime);
     const scoreText =
       match.status === "Post" || match.status === "Live"
         ? (match.firstSummary || "-") + " | " + (match.secondSummary || "-")
-        : match.venue;
+        : (match.isTossCompleted && match.status === "UpComing")
+          ? (match.tossText || (match.tossWinner + " won and elected to " + match.tossDecision))
+          : match.venue;
+    const detailText = match.isTossCompleted
+      ? (match.tossText || (match.tossWinner + " won and elected to " + match.tossDecision)) + (match.comments ? " | " + match.comments : "")
+      : (match.comments || match.venue || "");
+
     return (
       '<article class="match-card"><div class="match-head"><strong>' +
       escapeHtml(match.matchName) +
@@ -1354,7 +1395,7 @@
       "</span></div><p>" +
       escapeHtml(scoreText) +
       "</p><small>" +
-      escapeHtml(match.comments || match.venue || "") +
+      escapeHtml(detailText) +
       "</small></article>"
     );
   }

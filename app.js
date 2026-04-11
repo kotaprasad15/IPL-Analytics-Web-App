@@ -1009,7 +1009,7 @@ function buildFanBetsExperience(live) {
         .slice()
         .sort(compareFanBetMatches)
     : [];
-  const liveMatches = sortedMatches.filter((m) => m.status === "Live");
+  const liveMatches = sortedMatches.filter((m) => m.status === "Live" || (m.status === "UpComing" && m.isTossCompleted));
   const upcomingReleased = sortedMatches.filter(shouldIncludeUpcomingForVirtualBets);
   const scoreboardMatches = [...liveMatches, ...upcomingReleased].slice(0, 6);
   const featuredMatch = liveMatches[0] || upcomingReleased[0] || null;
@@ -1796,7 +1796,7 @@ function renderFanBetsLeaderboard() {
 }
 
 function renderFanBetsScoreboard(experience) {
-  const liveMatches = experience.scoreboardMatches.filter(match => match.status === "Live");
+  const liveMatches = experience.scoreboardMatches.filter(match => match.status === "Live" || (match.status === "UpComing" && match.isTossCompleted));
   const featured = liveMatches[0];
   const targets = [
     elements.fanBetsScoreboard,
@@ -1814,23 +1814,61 @@ function renderFanBetsScoreboard(experience) {
       <p class="narrative">The live scoreboard will automatically appear here when the next IPL match begins.</p>
     `;
   } else {
+    const delayed = isMatchDelayed(featured);
     html = `
     <div class="fan-bets-scoreboard-main">
       <div>
         <p class="section-kicker">Live Board</p>
         <h2>${escapeHtml(featured.matchName)}</h2>
-        <p class="narrative" style="margin-bottom:0.5rem;">${escapeHtml(buildFanBetScoreline(featured))}</p>
-        ${featured.status === "Live" && featured.strikerName ? `
-          <div style="display:flex; gap:16px; font-size:0.875rem; align-items:center; background:var(--surface-sunken); padding:8px 12px; border-radius:6px;">
-            <div style="color:var(--accent-blue);">🏏 <strong>${escapeHtml(featured.strikerName)}*</strong> ${featured.strikerRuns}(${featured.strikerBalls})</div>
-            <div style="color:var(--text-soft);">🏏 ${escapeHtml(featured.nonStrikerName)} ${featured.nonStrikerRuns}(${featured.nonStrikerBalls})</div>
-            <div style="color:var(--accent-coral);">⚾ <strong>${escapeHtml(featured.bowlerName)}*</strong> ${featured.bowlerWickets}/${featured.bowlerRuns} (${featured.bowlerOvers})</div>
+        ${delayed ? `
+          <div class="fan-board-delay-alert">
+            <span class="delay-icon">🕒</span>
+            <strong>${escapeHtml(featured.comments)}</strong>
           </div>
-        ` : ''}
+        ` : `<p class="narrative" style="margin-bottom:0.5rem;">${escapeHtml(buildFanBetScoreline(featured))}</p>`}
+        ${featured.status === "Live" && featured.strikerName && !delayed ? (() => {
+          // Derive balls bowled in current over from fractional part of BowlerOvers (e.g. "3.4" → 4 balls)
+          const overParts = String(featured.bowlerOvers || '0').split('.');
+          const ballsThisOver = Number(overParts[1] || 0);
+          // Each ball this over conceded = bowlerRuns / total balls * balls this over (rough approximation)
+          // We don't have per-ball data, so just show the over run total as a summary pill
+          const overRunsLabel = ballsThisOver > 0
+            ? `This over: <strong>${featured.bowlerRuns}</strong> runs · <strong>${ballsThisOver}</strong> ball${ballsThisOver > 1 ? 's' : ''}`
+            : '';
+          return `
+          <div style="display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:center; gap:0; background:var(--surface-sunken); border-radius:8px; overflow:hidden; margin-top:0.25rem;">
+            <div style="display:flex; align-items:center; gap:6px; padding:8px 14px;">
+              <span style="font-size:0.875rem; color:var(--accent-blue); white-space:nowrap;">🏏 <strong>${escapeHtml(featured.strikerName)}*</strong>&nbsp;<span style="font-weight:500;">${featured.strikerRuns}<span style="opacity:0.6;">(${featured.strikerBalls})</span></span></span>
+            </div>
+            <div style="width:1px; align-self:stretch; background:var(--border-subtle, rgba(255,255,255,0.08));"></div>
+            <div style="display:flex; align-items:center; gap:6px; padding:8px 14px;">
+              <span style="font-size:0.875rem; color:var(--text-soft); white-space:nowrap;">🏏 ${escapeHtml(featured.nonStrikerName)}&nbsp;<span style="font-weight:500;">${featured.nonStrikerRuns}<span style="opacity:0.6;">(${featured.nonStrikerBalls})</span></span></span>
+            </div>
+            <div style="width:1px; align-self:stretch; background:var(--border-subtle, rgba(255,255,255,0.08));"></div>
+            <div style="display:flex; flex-direction:column; gap:3px; padding:8px 14px;">
+              <span style="font-size:0.875rem; color:var(--accent-coral); white-space:nowrap;">⚾ <strong>${escapeHtml(featured.bowlerName)}*</strong>&nbsp;<span style="font-weight:500;">${featured.bowlerWickets}/${featured.bowlerRuns}<span style="opacity:0.6;"> (${featured.bowlerOvers})</span></span></span>
+              ${overRunsLabel ? `<span style="font-size:0.72rem; color:var(--accent-coral); opacity:0.75;">${overRunsLabel}</span>` : ''}
+            </div>
+          </div>`;
+        })() : ''}
+        ${featured.isTossCompleted ? (() => {
+          const winner = featured.tossTeam || featured.tossWinner || featured.tossWinnerName || '';
+          const decision = featured.tossDecision ? 'elected to ' + featured.tossDecision : '';
+          const sentence = winner && decision
+            ? winner + ' won the toss and ' + decision
+            : winner
+              ? winner + ' won the toss'
+              : featured.tossText || '';
+          return `
+          <div style="display:flex; align-items:center; gap:8px; margin-top:0.5rem; padding-left:14px; font-size:0.875rem; color:var(--accent-orange);">
+            <span>🪙</span>
+            <span><strong>Toss:</strong> ${escapeHtml(sentence)}</span>
+          </div>`;
+        })() : ''}
       </div>
       <div class="fan-score-pill-group">
-        <span class="fan-bet-chip">Live</span>
-        <span class="fan-bet-chip fan-bet-chip-soft">${escapeHtml(featured.comments || featured.venue || "Official feed")}</span>
+        <span class="fan-bet-chip ${featured.status === 'Live' ? '' : 'fan-bet-chip-toss'}">${featured.status === 'Live' ? 'Live' : 'Toss Done'}</span>
+        <span class="fan-bet-chip fan-bet-chip-soft">${escapeHtml(delayed ? (featured.venue || "Official feed") : (featured.comments || featured.venue || "Official feed"))}</span>
       </div>
     </div>
     `;
@@ -2056,6 +2094,12 @@ function oversToBalls(overs) {
 
 function formatPoints(value) {
   return `${Math.round(numberValue(value)).toLocaleString("en-IN")} pts`;
+}
+
+function isMatchDelayed(match) {
+  if (!match || !match.comments) return false;
+  const c = match.comments.toLowerCase();
+  return c.includes("delay") || c.includes("delayed") || c.includes("rain stopped") || c.includes("bad light");
 }
 
 function render() {
