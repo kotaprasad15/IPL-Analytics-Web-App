@@ -470,11 +470,11 @@ code {
 .logo-icon {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-hover));
+  background: transparent;
   box-shadow: 0 8px 24px rgba(11, 61, 145, 0.35);
 }
 
