@@ -2180,10 +2180,41 @@ function renderResultsBand() {
 }
 
 function renderSummaryGrid(teams) {
-  const bestWinRate = teams.reduce((best, row) => (row.winRate > best.winRate ? row : best), teams[0]);
-  const bestBatting = teams.reduce((best, row) => (row.avgScore > best.avgScore ? row : best), teams[0]);
-  const bestBowling = teams.reduce((best, row) => (row.bowlingEconomy < best.bowlingEconomy ? row : best), teams[0]);
-  const bestWicketSide = teams.reduce((best, row) => (row.wicketRate > best.wicketRate ? row : best), teams[0]);
+  let sourceTeams = teams;
+  
+  if (state.live && state.live.table && state.live.table.length > 0) {
+    sourceTeams = state.live.table.map((teamRow) => {
+      const matchCount = teamRow.matches || 1;
+      let totalRuns = 0;
+      let runsConceded = 0;
+      let ballsBowled = 0;
+      let totalWickets = 0;
+      
+      if (state.live.players) {
+        state.live.players.forEach((p) => {
+          if (p.team === teamRow.team) {
+            totalRuns += p.runs || 0;
+            runsConceded += p.runsConceded || 0;
+            ballsBowled += p.ballsBowled || 0;
+            totalWickets += p.wickets || 0;
+          }
+        });
+      }
+      
+      return {
+        team: teamRow.team,
+        winRate: teamRow.matches ? (teamRow.wins / teamRow.matches) * 100 : 0,
+        avgScore: totalRuns / matchCount,
+        bowlingEconomy: ballsBowled ? runsConceded / (ballsBowled / 6) : 999,
+        wicketRate: totalWickets / matchCount,
+      };
+    });
+  }
+
+  const bestWinRate = sourceTeams.reduce((best, row) => (row.winRate > best.winRate ? row : best), sourceTeams[0]);
+  const bestBatting = sourceTeams.reduce((best, row) => (row.avgScore > best.avgScore ? row : best), sourceTeams[0]);
+  const bestBowling = sourceTeams.reduce((best, row) => (row.bowlingEconomy < best.bowlingEconomy ? row : best), sourceTeams[0]);
+  const bestWicketSide = sourceTeams.reduce((best, row) => (row.wicketRate > best.wicketRate ? row : best), sourceTeams[0]);
 
   function teamCard(label, teamName, body) {
     const slug = getTeamSlug(teamName);
@@ -2196,9 +2227,11 @@ function renderSummaryGrid(teams) {
     </article>`;
   }
 
+  const contextLabel = sourceTeams !== teams ? "current season" : "the selected view";
+
   elements.summaryGrid.innerHTML =
-    teamCard("Best win rate", bestWinRate.team, `${formatPercent(bestWinRate.winRate)} across the selected view`) +
-    teamCard("Best batting output", bestBatting.team, `${formatNumber(bestBatting.avgScore, 1)} runs per innings`) +
+    teamCard("Best win rate", bestWinRate.team, `${formatPercent(bestWinRate.winRate)} across ${contextLabel}`) +
+    teamCard("Best batting output", bestBatting.team, `${formatNumber(bestBatting.avgScore, 1)} runs per match`) +
     teamCard("Tightest bowling", bestBowling.team, `${formatNumber(bestBowling.bowlingEconomy, 2)} economy rate`) +
     teamCard("Most wickets per match", bestWicketSide.team, `${formatNumber(bestWicketSide.wicketRate, 2)} wickets each game`);
 }
