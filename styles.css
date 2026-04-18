@@ -118,12 +118,12 @@ body {
 }
 
 a {
-  color: var(--brand-blue-hover);
+  color: var(--accent-cyan);
   transition: color var(--duration-hover) var(--ease-out);
 }
 
 a:hover {
-  color: var(--brand-blue-dark);
+  color: var(--brand-gold);
 }
 
 code {
@@ -378,7 +378,7 @@ code {
   margin: 0 0 8px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--brand-blue);
+  color: var(--brand-gold);
   font-size: 0.76rem;
   font-weight: 700;
 }
@@ -443,7 +443,7 @@ code {
 
 .nav-brand {
   font-weight: 700;
-  color: var(--brand-blue);
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -1293,7 +1293,7 @@ input:focus {
   place-items: center;
   border-radius: 999px;
   background: rgba(11, 61, 145, 0.1);
-  color: var(--brand-blue);
+  color: var(--brand-gold);
   font-weight: 700;
 }
 
@@ -1326,7 +1326,7 @@ input:focus {
   background: none;
   padding: 0;
   font: inherit;
-  color: var(--brand-blue-hover);
+  color: var(--text-primary);
   cursor: pointer;
   text-align: left;
   font-weight: 700;
