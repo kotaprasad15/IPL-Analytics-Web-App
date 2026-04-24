@@ -1797,7 +1797,7 @@ function renderFanBetsLeaderboard() {
 
 function renderFanBetsScoreboard(experience) {
   const liveMatches = experience.scoreboardMatches.filter(match => match.status === "Live" || (match.status === "UpComing" && match.isTossCompleted));
-  const featured = liveMatches[0];
+  let featured = liveMatches[0];
   const targets = [
     elements.fanBetsScoreboard,
     elements.analysisScoreboard,
@@ -1805,6 +1805,12 @@ function renderFanBetsScoreboard(experience) {
   ].filter(Boolean);
 
   if (!targets.length) return;
+
+  if (!featured && state.live?.matches) {
+    featured = state.live.matches
+      .filter((m) => m.status === "UpComing" && !m.isTossCompleted)
+      .sort((a, b) => a.startTime - b.startTime)[0];
+  }
 
   let html = "";
   if (!featured) {
@@ -1867,8 +1873,8 @@ function renderFanBetsScoreboard(experience) {
         })() : ''}
       </div>
       <div class="fan-score-pill-group">
-        <span class="fan-bet-chip ${featured.status === 'Live' ? '' : 'fan-bet-chip-toss'}">${featured.status === 'Live' ? 'Live' : 'Toss Done'}</span>
-        <span class="fan-bet-chip fan-bet-chip-soft">${escapeHtml(delayed ? (featured.venue || "Official feed") : (featured.comments || featured.venue || "Official feed"))}</span>
+        <span class="fan-bet-chip ${featured.status === 'Live' ? '' : 'fan-bet-chip-toss'}">${featured.status === 'Live' ? 'Live' : (featured.isTossCompleted ? 'Toss Done' : 'Upcoming')}</span>
+        <span class="fan-bet-chip fan-bet-chip-soft">${escapeHtml(delayed ? (featured.venue || "Official feed") : (featured.status === 'UpComing' && !featured.isTossCompleted ? formatDateTime(featured.startTime) : (featured.comments || featured.venue || "Official feed")))}</span>
       </div>
     </div>
     `;
