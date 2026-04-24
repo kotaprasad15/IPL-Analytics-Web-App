@@ -1859,12 +1859,21 @@ function renderFanBetsScoreboard(experience) {
         })() : ''}
         ${featured.isTossCompleted ? (() => {
           const winner = featured.tossTeam || featured.tossWinner || featured.tossWinnerName || '';
-          const decision = featured.tossDecision ? 'elected to ' + featured.tossDecision : '';
-          const sentence = winner && decision
-            ? winner + ' won the toss and ' + decision
-            : winner
-              ? winner + ' won the toss'
-              : featured.tossText || '';
+          let decisionText = '';
+          if (featured.tossDecision) {
+            const d = featured.tossDecision.toLowerCase();
+            if (d.includes('bat')) decisionText = 'chose to bat';
+            else if (d.includes('field') || d.includes('bowl')) decisionText = 'chose to bowl';
+            else decisionText = 'chose to ' + featured.tossDecision;
+          }
+          let sentence = featured.tossText || '';
+          if (winner && decisionText) {
+            sentence = winner + ' won the toss and ' + decisionText;
+          } else if (sentence && winner && sentence.trim().toLowerCase().startsWith('won ')) {
+            sentence = winner + ' ' + sentence.trim();
+          } else if (!sentence && winner) {
+            sentence = winner + ' won the toss';
+          }
           return `
           <div style="display:flex; align-items:center; gap:8px; margin-top:0.5rem; padding-left:14px; font-size:0.875rem; color:var(--accent-orange);">
             <span>🪙</span>

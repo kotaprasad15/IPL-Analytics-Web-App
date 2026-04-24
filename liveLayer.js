@@ -1377,14 +1377,28 @@
           : match.status === "Post"
             ? "Completed"
             : formatDateTime(match.startTime);
+    let tossFormatted = match.tossText || "";
+    if (tossFormatted && match.tossWinner && tossFormatted.trim().toLowerCase().startsWith("won ")) {
+      tossFormatted = match.tossWinner + " " + tossFormatted.trim();
+    } else if (!tossFormatted && match.tossWinner) {
+      let d = "";
+      if (match.tossDecision) {
+        const lower = match.tossDecision.toLowerCase();
+        if (lower.includes("bat")) d = "chose to bat";
+        else if (lower.includes("field") || lower.includes("bowl")) d = "chose to bowl";
+        else d = "chose to " + match.tossDecision;
+      }
+      tossFormatted = match.tossWinner + " won the toss" + (d ? " and " + d : "");
+    }
+
     const scoreText =
       match.status === "Post" || match.status === "Live"
         ? (match.firstSummary || "-") + " | " + (match.secondSummary || "-")
         : (match.isTossCompleted && match.status === "UpComing")
-          ? (match.tossText || (match.tossWinner + " won and elected to " + match.tossDecision))
+          ? tossFormatted
           : match.venue;
     const detailText = match.isTossCompleted
-      ? (match.tossText || (match.tossWinner + " won and elected to " + match.tossDecision)) + (match.comments ? " | " + match.comments : "")
+      ? tossFormatted + (match.comments ? " | " + match.comments : "")
       : (match.comments || match.venue || "");
 
     return (
