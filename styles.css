@@ -1008,6 +1008,10 @@ input:focus {
   pointer-events: none;
 }
 
+.summary-card--player[data-player="Abhishek Sharma"]::before {
+  filter: url(#remove-white);
+}
+
 .summary-card--player::after {
   content: "";
   position: absolute;
@@ -1043,6 +1047,16 @@ input:focus {
   background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-blue-hover) 55%, rgba(0,194,255,0.85) 100%);
   box-shadow: 0 16px 48px rgba(11, 61, 145, 0.35), var(--shadow-inset);
   transform: translateY(-4px);
+}
+
+.summary-card--player.summary-card--orange-cap:hover {
+  background: linear-gradient(135deg, #e65100 0%, #f57c00 55%, #ffb300 100%);
+  box-shadow: 0 16px 48px rgba(230, 81, 0, 0.4), var(--shadow-inset);
+}
+
+.summary-card--player.summary-card--purple-cap:hover {
+  background: linear-gradient(135deg, #4a148c 0%, #7b1fa2 55%, #ab47bc 100%);
+  box-shadow: 0 16px 48px rgba(74, 20, 140, 0.4), var(--shadow-inset);
 }
 
 .result-card strong,
@@ -1386,6 +1400,16 @@ input:focus {
 .top-player-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-card-hover), var(--shadow-inset);
+}
+
+.top-player-card.top-player-card--orange-cap:hover {
+  background: linear-gradient(135deg, #e65100 0%, #f57c00 55%, #ffb300 100%);
+  box-shadow: 0 16px 48px rgba(230, 81, 0, 0.4), var(--shadow-inset);
+}
+
+.top-player-card.top-player-card--purple-cap:hover {
+  background: linear-gradient(135deg, #4a148c 0%, #7b1fa2 55%, #ab47bc 100%);
+  box-shadow: 0 16px 48px rgba(74, 20, 140, 0.4), var(--shadow-inset);
 }
 
 .entity-hover-card {

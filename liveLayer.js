@@ -236,7 +236,7 @@
       const topBowler = teamPlayers
         .slice()
         .sort(function (a, b) {
-          return b.wickets - a.wickets;
+          return b.wickets - a.wickets || a.economy - b.economy;
         })[0];
 
       return {
@@ -340,7 +340,7 @@
     const topBowler = live.players
       .slice()
       .sort(function (a, b) {
-        return b.wickets - a.wickets;
+        return b.wickets - a.wickets || a.economy - b.economy;
       })[0];
 
     function getTeamLogoUrl(teamName) {
@@ -366,8 +366,9 @@
       const imgStyle = playerImgUrl
         ? " style=\"--player-img:url('" + safePlayer + "');--team-logo:url('" + safeLogo + "')\""
         : "";
+      const capClass = label === "Orange cup holder" ? " summary-card--orange-cap" : (label === "Purple cup holder" ? " summary-card--purple-cap" : "");
       return (
-        "<article class=\"summary-card summary-card--player\"" + imgStyle + ">" +
+        "<article class=\"summary-card summary-card--player" + capClass + "\"" + imgStyle + ">" +
         "<span>" + escapeHtml(label) + "</span>" +
         "<strong>" + escapeHtml(playerName) + "</strong>" +
         "<p>" + body + "</p>" +
@@ -389,14 +390,14 @@
         topOdds.logoUrl || getTeamLogoUrl(topOdds.team)
       ) +
       buildPlayerSummaryCard(
-        "Top scorer right now",
+        "Orange cup holder",
         topBatter.player,
         topBatter.runs + " runs for " + escapeHtml(topBatter.team),
         topBatter.imageUrl || "",
         getTeamLogoUrl(topBatter.team)
       ) +
       buildPlayerSummaryCard(
-        "Top wicket-taker right now",
+        "Purple cup holder",
         topBowler.player,
         topBowler.wickets + " wickets for " + escapeHtml(topBowler.team),
         topBowler.imageUrl || "",
@@ -510,7 +511,7 @@
     const topBowler = players
       .slice()
       .sort(function (a, b) {
-        return b.wickets - a.wickets;
+        return b.wickets - a.wickets || a.economy - b.economy;
       })[0];
     const nextMatch = live.matches
       .filter(function (match) {
@@ -542,8 +543,8 @@
       '</strong></div><div class="mini-stat"><span>NRR</span><strong>' +
       escapeHtml(formatSignedNumber(team.netRunRate, 3)) +
       '</strong></div></div><div class="top-player-grid">' +
-      renderTopPlayerCard("Current top scorer", topBatter, (topBatter ? topBatter.runs : 0) + " runs") +
-      renderTopPlayerCard("Current top bowler", topBowler, (topBowler ? topBowler.wickets : 0) + " wickets") +
+      renderTopPlayerCard("Orange cup holder", topBatter, (topBatter ? topBatter.runs : 0) + " runs") +
+      renderTopPlayerCard("Purple cup holder", topBowler, (topBowler ? topBowler.wickets : 0) + " wickets") +
       '<div class="top-player-card"><span>Winner odds</span><strong>' +
       formatPercent(team.winnerOdds) +
       "</strong><p>" +

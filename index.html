@@ -39,6 +39,14 @@
             <feMergeNode in="SourceGraphic"></feMergeNode>
           </feMerge>
         </filter>
+        <filter id="remove-white">
+          <feColorMatrix type="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            -1.2 -1.2 -1.2 0 3.5
+          " />
+        </filter>
       </defs>
       <path class="energy-wave wave-one" d="M-60 240C121 190 286 150 472 185C638 216 802 314 977 295C1112 281 1240 204 1500 233"></path>
       <path class="energy-wave wave-two" d="M-80 462C112 397 286 363 473 399C640 432 770 523 967 520C1125 518 1270 432 1512 452"></path>

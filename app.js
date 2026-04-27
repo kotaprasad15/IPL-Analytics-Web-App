@@ -2310,7 +2310,7 @@ function renderTeamTable(teams) {
 
 function renderSpotlight(team, players) {
   const topBatter = [...players].sort((a, b) => b.runs - a.runs)[0];
-  const topBowler = [...players].sort((a, b) => b.wickets - a.wickets)[0];
+  const topBowler = [...players].sort((a, b) => b.wickets - a.wickets || a.economy - b.economy)[0];
   const mostImpact = players[0];
   const officialUrl = state.data.teamUrls[team.team];
 
@@ -2343,8 +2343,8 @@ function renderSpotlight(team, players) {
     </div>
 
     <div class="top-player-grid">
-      ${renderTopPlayerCard("Top scorer", topBatter, `${topBatter ? topBatter.runs : 0} runs`)}
-      ${renderTopPlayerCard("Top wicket-taker", topBowler, `${topBowler ? topBowler.wickets : 0} wickets`)}
+      ${renderTopPlayerCard("Orange cup holder", topBatter, `${topBatter ? topBatter.runs : 0} runs`)}
+      ${renderTopPlayerCard("Purple cup holder", topBowler, `${topBowler ? topBowler.wickets : 0} wickets`)}
       ${renderTopPlayerCard("Highest impact", mostImpact, `${mostImpact ? formatNumber(mostImpact.impactScore, 0) : 0} impact`)}
       <div class="top-player-card">
         <span>Squad depth</span>
@@ -2570,8 +2570,10 @@ function renderTopPlayerCard(label, player, statText) {
     `;
   }
 
+  const capClass = label === "Orange cup holder" ? " top-player-card--orange-cap" : (label === "Purple cup holder" ? " top-player-card--purple-cap" : "");
+
   return `
-    <div class="top-player-card">
+    <div class="top-player-card${capClass}">
       <span>${label}</span>
       <strong>${escapeHtml(player.player)}</strong>
       <p>${escapeHtml(statText)}</p>
