@@ -563,7 +563,7 @@
           ordinalWord(team.currentRank) +
           " in the live table with " +
           team.points +
-          " points. The model blends 2023-2025 historical team strength with current 2026 form, then simulates the remaining league and playoff path to estimate title odds and likely finishing position."
+          " points. The model uses current season form and simulates the remaining league and playoff path to estimate title odds and likely finishing position."
       ) +
       "</p>";
   }
@@ -612,7 +612,7 @@
         .join("") +
       '</ul><p class="narrative">The simulation runs ' +
       live.simulationCount.toLocaleString("en-IN") +
-      " seasons using the live table, remaining fixtures, and team-strength estimates from both the current campaign and the last three local seasons.</p>";
+      " seasons using the live table, remaining fixtures, and current season team-strength estimates.</p>";
   }
 
   function renderLiveMatchPanel(live, team) {
@@ -953,11 +953,8 @@
 
   function buildTeamRatings(liveTable, historicalMap) {
     const metrics = liveTable.map(function (team) {
-      const historical = historicalMap.get(team.team);
       return {
         team: team.team,
-        historicalWinRate: historical ? historical.winRate : 50,
-        historicalNet: historical ? historical.netRating : 0,
         livePointRate: team.matches ? team.points / team.matches : 0,
         liveNrr: team.netRunRate,
         liveTopRuns: team.topBatter ? team.topBatter.runs : 0,
@@ -965,8 +962,6 @@
       };
     });
 
-    const winZ = zScoreMap(metrics, "historicalWinRate");
-    const histNetZ = zScoreMap(metrics, "historicalNet");
     const pointZ = zScoreMap(metrics, "livePointRate");
     const nrrZ = zScoreMap(metrics, "liveNrr");
     const runsZ = zScoreMap(metrics, "liveTopRuns");
@@ -976,12 +971,10 @@
     metrics.forEach(function (row) {
       ratings.set(
         row.team,
-        winZ.get(row.team) * 0.32 +
-          histNetZ.get(row.team) * 0.23 +
-          pointZ.get(row.team) * 0.2 +
-          nrrZ.get(row.team) * 0.15 +
-          runsZ.get(row.team) * 0.05 +
-          wicketsZ.get(row.team) * 0.05
+        pointZ.get(row.team) * 0.55 +
+          nrrZ.get(row.team) * 0.30 +
+          runsZ.get(row.team) * 0.075 +
+          wicketsZ.get(row.team) * 0.075
       );
     });
 
